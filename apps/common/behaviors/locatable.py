@@ -1,4 +1,6 @@
+# apps/common/behaviors/locatable.py
 from django.db import models
+
 # from timezone_field import TimeZoneField
 
 

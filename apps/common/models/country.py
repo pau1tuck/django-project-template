@@ -1,3 +1,4 @@
+# apps/common/models/country.py
 import uuid
 from django.db import models
 
@@ -37,6 +38,7 @@ class Country(models.Model):  # could expand on pypi.python.org/pypi/django-coun
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+
 
 @receiver(pre_save, sender=Country)
 def lowercase_code(sender, instance, **kwargs):

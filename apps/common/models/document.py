@@ -1,3 +1,4 @@
+# apps/common/models/document.py
 from . import Upload
 from django.db import models
 

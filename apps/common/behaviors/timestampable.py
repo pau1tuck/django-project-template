@@ -1,3 +1,4 @@
+# apps/common/behaviors/timestampable.py
 from django.db import models
 
 

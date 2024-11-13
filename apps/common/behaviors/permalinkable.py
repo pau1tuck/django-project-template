@@ -1,3 +1,4 @@
+# apps/common/behaviors/permalinkable.py
 from django.core.validators import validate_slug
 from django.db import models
 from django.db.models.signals import pre_save

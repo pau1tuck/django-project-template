@@ -1,3 +1,4 @@
+# apps/common/models/currency.py
 import uuid
 from django.db import models
 from apps.common.behaviors import Timestampable
@@ -24,6 +25,7 @@ class Currency(Timestampable, models.Model):
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+
 
 @receiver(pre_save, sender=Currency)
 def lowercase_code(sender, instance, **kwargs):

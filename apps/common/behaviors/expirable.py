@@ -1,3 +1,4 @@
+# apps/common/behaviors/expirable.py
 from django.db import models
 
 

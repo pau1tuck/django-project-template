@@ -1,3 +1,4 @@
+# apps/common/models/address.py
 import uuid
 
 from django.db import models

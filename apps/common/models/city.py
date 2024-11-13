@@ -1,3 +1,4 @@
+# apps/common/models/city.py
 import uuid
 from django.db import models
 
@@ -29,6 +30,7 @@ class City(models.Model):
 
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+
 
 @receiver(pre_save, sender=City)
 def lowercase_code(sender, instance, **kwargs):

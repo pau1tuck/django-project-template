@@ -1,3 +1,4 @@
+# apps/common/behaviors/annotatable.py
 from django.db import models
 
 

@@ -1,3 +1,4 @@
+# apps/common/models/note.py
 import uuid
 from django.db import models
 from apps.common.behaviors import Timestampable, Authorable
