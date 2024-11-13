@@ -4,6 +4,7 @@
 intelligenttrading-datastore.json
 .idea/
 *credentials.json
+*.zip
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template

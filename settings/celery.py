@@ -1,32 +1,45 @@
+# settings/celery.py
+
 import os
 
+# Import the Celery class, which will be used to create a Celery application instance.
 from celery import Celery
 
-# Set the default Django settings module for the 'celery' program.
+# This tells Celery which settings file to use for Django.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
-# Celery Configuration Options
-# CELERY_TIMEZONE = "Etc/UCT"
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 3600 * 4  # 4 hours
-# CELERY_RESULT_BACKEND = 'django-db'
-# CELERY_CACHE_BACKEND = 'django-cache'
+
+# Celery configuration:
+# CELERY_TIMEZONE = "Etc/UCT"  # Optional: Define timezone for task scheduling.
+CELERY_TASK_TRACK_STARTED = True  # Enables tracking of task start times.
+CELERY_TASK_TIME_LIMIT = (
+    3600 * 4
+)  # Set a time limit (in seconds) for task execution; here it's 4 hours.
+# CELERY_RESULT_BACKEND = 'django-db'  # Optional: store task results in Django's database.
+# CELERY_CACHE_BACKEND = 'django-cache'  # Optional: use Django's cache system for task result storage.
 
 
+# Custom Celery class with overridden task name generation to simplify module paths:
 class MyCelery(Celery):
     def gen_task_name(self, name, module):
+        # Modify the module path by filtering out specific directories ('apps' and 'tasks')
+        # for a cleaner task name. This avoids cluttering the task name with redundant parts.
         module = ".".join(
             [dir for dir in module.split(".") if dir not in ("apps", "tasks")]
         )
+
+        # Call the parent class's 'gen_task_name' method to generate the final task name
+        # using the cleaned module path. This produces a more readable task name.
         return super().gen_task_name(name, module)
 
 
+# Instantiate the Celery application with a specific name ("data" here).
 celery_app = MyCelery("data")
 
-# Using a string here means the worker doesn't have to serialize
-# the configuration object to child processes.
-# - namespace='CELERY' means all celery-related configuration keys
-#   should have a `CELERY_` prefix.
+# Configure Celery using Django settings.
+# Using a string here avoids having to serialize the configuration to child processes.
+# The namespace 'CELERY' means all Celery-related settings in Django should start with 'CELERY_'.
 celery_app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# Load task modules from all registered Django apps.
+# Automatically discover tasks in Django apps.
+# This lets Celery find tasks defined in each Django app’s 'tasks.py' file.
 celery_app.autodiscover_tasks()
