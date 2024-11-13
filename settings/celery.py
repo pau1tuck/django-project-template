@@ -1,4 +1,5 @@
 # settings/celery.py
+# Asynchronous task queue settings
 
 import os
 
@@ -18,16 +19,16 @@ CELERY_TASK_TIME_LIMIT = (
 # CELERY_CACHE_BACKEND = 'django-cache'  # Optional: use Django's cache system for task result storage.
 
 
-# Custom Celery class with overridden task name generation to simplify module paths:
+# Custom Celery class to extend the parent class with overridden task name generation to simplify module paths:
 class MyCelery(Celery):
     def gen_task_name(self, name, module):
-        # Modify the module path by filtering out specific directories ('apps' and 'tasks')
-        # for a cleaner task name. This avoids cluttering the task name with redundant parts.
+        # Modify the module path by filtering out specific directories ('apps' and 'tasks') for a cleaner task name.
+        # This avoids cluttering the task name with redundant parts.
         module = ".".join(
             [dir for dir in module.split(".") if dir not in ("apps", "tasks")]
         )
 
-        # Call the parent class's 'gen_task_name' method to generate the final task name
+        # Call the parent class's 'gen_task_name' method as proxy object to generate the final task name
         # using the cleaned module path. This produces a more readable task name.
         return super().gen_task_name(name, module)
 
