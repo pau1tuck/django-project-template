@@ -1,4 +1,5 @@
 # tasks.py
+# Celery task running best practices 1
 
 # Import the necessary libraries and modules
 import time

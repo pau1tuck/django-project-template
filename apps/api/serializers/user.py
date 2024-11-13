@@ -1,3 +1,4 @@
+# apps/server/api/serializers/user.py
 from rest_framework import serializers
 from apps.common.utilities.serializers import WritableSerializerMethodField
 from apps.common.models import User
