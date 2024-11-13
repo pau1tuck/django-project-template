@@ -1,3 +1,4 @@
+# apps/api/views/image.py
 from apps.common.models import Image
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import authentication, filters, permissions, serializers, viewsets

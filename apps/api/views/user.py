@@ -1,3 +1,4 @@
+# apps/api/views/user.py
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django_filters import DateTimeFilter
