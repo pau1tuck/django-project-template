@@ -1,3 +1,4 @@
+# apps/common/tests/test_models/test_note.py
 from django.contrib.auth.models import User
 from django.test import TestCase
 
@@ -10,13 +11,8 @@ class NoteTest(AuthorableTest, TimestampableTest, TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
-            username='prince',
-            email='prince@p.com',
-            password='password'
+            username="prince", email="prince@p.com", password="password"
         )
 
     def create_instance(self, **kwargs):
-        return Note.objects.create(
-            author=self.user,
-            **kwargs
-        )
+        return Note.objects.create(author=self.user, **kwargs)

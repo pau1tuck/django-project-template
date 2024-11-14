@@ -1,3 +1,4 @@
+# apps/common/tests/test_behaviors/test_mixins.py
 class BehaviorTestCaseMixin(object):
     @property
     def model(self):

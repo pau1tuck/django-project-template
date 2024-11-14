@@ -1,3 +1,4 @@
+# apps/common/tests/test_behaviors/test_authorable.py
 from unittest import mock
 
 from django.utils import timezone
@@ -9,7 +10,7 @@ class AuthorableTest(BehaviorTestCaseMixin):
     def test_save_authored_at_should_store_data_correctly(self):
         now = timezone.now()
 
-        with mock.patch('django.utils.timezone.now') as mock_now:
+        with mock.patch("django.utils.timezone.now") as mock_now:
             mock_now.return_value = now
             obj = self.create_instance(authored_at=now)
             self.assertEqual(obj.authored_at, now)
