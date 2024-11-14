@@ -1,3 +1,4 @@
+# settings/celery_beat.py
 import logging
 
 from django_celery_beat.models import PeriodicTask

@@ -1,3 +1,4 @@
+# settings/base.py
 # from __future__ import absolute_import
 import mimetypes
 import os

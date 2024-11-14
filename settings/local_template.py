@@ -1,3 +1,4 @@
+# settings/local_template.py
 from decouple import config
 
 # SECURITY WARNING: keep the secret key used in production secret!

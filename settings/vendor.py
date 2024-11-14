@@ -1,3 +1,4 @@
+# settings/vendor.py
 import os
 from decouple import config
 
