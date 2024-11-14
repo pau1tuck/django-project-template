@@ -1,3 +1,4 @@
+# apps/public/views/main_content_view.py
 import logging
 from typing import Any, Dict
 

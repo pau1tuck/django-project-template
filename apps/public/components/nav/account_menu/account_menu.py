@@ -1,3 +1,4 @@
+# apps/public/components/nav/account_menu/account_menu.py
 from django_components import component
 
 

@@ -1,3 +1,4 @@
+# apps/public/urls.py
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
@@ -8,15 +9,13 @@ app_name = "public"
 urlpatterns = []
 
 # Brand, Category, and Item
-urlpatterns += (
-    [
-        path(
-            "",
-            account.HomeView.as_view(),
-            name="home",
-        ),
-    ]
-)
+urlpatterns += [
+    path(
+        "",
+        account.HomeView.as_view(),
+        name="home",
+    ),
+]
 
 # Auth and Accounts
 urlpatterns += [

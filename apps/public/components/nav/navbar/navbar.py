@@ -1,3 +1,4 @@
+# apps/public/components/nav/navbar/navbar.py
 from django_components import component
 
 

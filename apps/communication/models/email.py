@@ -1,3 +1,4 @@
+# apps/communication/models/email.py
 from datetime import datetime
 import urllib.request
 from django.core.mail import EmailMessage
@@ -9,19 +10,27 @@ from apps.common.behaviors import Timestampable
 
 class Email(Timestampable, models.Model):
     to_address = models.CharField(max_length=140)
-    from_address = models.CharField(max_length=140,
-                                    default="NSP <bookings@naturalselectionpromotions.com>")
+    from_address = models.CharField(
+        max_length=140, default="NSP <bookings@naturalselectionpromotions.com>"
+    )
     subject = models.TextField(max_length=140)
     body = models.TextField(default="")
     attachments = models.ManyToManyField(Upload)
 
-    (NOTIFICATION, CONFIRMATION, PASSWORD,) = range(3)
+    (
+        NOTIFICATION,
+        CONFIRMATION,
+        PASSWORD,
+    ) = range(3)
     # text values here are used as subject line in email notifications, duplicate values allowed
-    TYPE_CHOICES = ((NOTIFICATION, 'notification'),
-                    (CONFIRMATION, 'confirmation'),
-                    (PASSWORD, 'password'),
-                    )
-    type = models.SmallIntegerField(choices=TYPE_CHOICES, null=True, blank=True, default=NOTIFICATION)
+    TYPE_CHOICES = (
+        (NOTIFICATION, "notification"),
+        (CONFIRMATION, "confirmation"),
+        (PASSWORD, "password"),
+    )
+    type = models.SmallIntegerField(
+        choices=TYPE_CHOICES, null=True, blank=True, default=NOTIFICATION
+    )
 
     # UPDATE HISTORY
     sent_at = models.DateTimeField(null=True)
@@ -64,12 +73,14 @@ class Email(Timestampable, models.Model):
         #               """ % (server_name, self.from_address, self.to_address, self.body))
 
         self.save()  # in case it hasn't been saved yet and doesn't have an id
-        if not hasattr(self, 'email'):
+        if not hasattr(self, "email"):
             self.email = self.createMessageObject()
         self.email.subject = self.subject
         self.email.body = self.body
         self.email.from_email = self.from_address
-        self.email.to = [self.to_address, ]
+        self.email.to = [
+            self.to_address,
+        ]
 
         for attachment in self.attachments.all():
             file_name = (attachment.name | "file_upload") + attachment.file_extension

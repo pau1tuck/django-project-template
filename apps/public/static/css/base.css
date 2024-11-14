@@ -1,8 +1,9 @@
+/* apps/public/static/css/base.css */
 .icon-text .icon:not(:last-child) {
     margin-right: 0.25em;
 }
 
-.asse-parent-height-fix {
+.asset-parent-height-fix {
     position: relative;
     top: -1rem;
 }

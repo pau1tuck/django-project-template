@@ -1,3 +1,4 @@
+# apps/integration/telegram/commands/random_dog.py
 import requests
 from apps.communication.telegram.commands.decorator import telegram_command
 from telegram import Message

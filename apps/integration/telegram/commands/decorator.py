@@ -1,3 +1,4 @@
+# apps/integration/telegram/commands/decorator.py
 from textwrap import dedent
 from typing import Callable
 

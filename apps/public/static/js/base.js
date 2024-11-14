@@ -1,3 +1,4 @@
+// apps/public/static/js/base.js
 // HTMX HELPERS
 
 // add CSRF token to every request

@@ -1,3 +1,4 @@
+# apps/public/components/messages/messages.py
 from django_components import component
 
 

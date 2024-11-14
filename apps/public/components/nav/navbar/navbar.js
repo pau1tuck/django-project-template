@@ -1,3 +1,4 @@
+// apps/public/components/nav/navbar/navbar.js
 document.addEventListener('DOMContentLoaded', () => {
   // Get all "navbar-burger" elements
   const $navbarBurgers = Array.prototype.slice.call(

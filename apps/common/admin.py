@@ -1,3 +1,4 @@
+# apps/common/admin.py
 from django.contrib import admin
 from apps.common.models import User
 

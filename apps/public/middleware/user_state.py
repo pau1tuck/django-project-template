@@ -1,3 +1,4 @@
+# apps/public/middleware/user_state.py
 from apps.assistant.models import Assistant, Conversation
 from apps.item.models import Category
 

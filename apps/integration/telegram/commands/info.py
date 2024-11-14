@@ -1,3 +1,4 @@
+# apps/integration/telegram/commands/info.py
 """ Commands:
 
 info - Information

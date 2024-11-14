@@ -1,3 +1,4 @@
+# apps/public/components/footer/footer.py
 from django_components import component
 
 

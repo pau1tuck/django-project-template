@@ -1,3 +1,4 @@
+# apps/integration/telegram/commands/start.py
 import logging
 
 from telegram import Message

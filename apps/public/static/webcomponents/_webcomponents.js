@@ -1,3 +1,4 @@
+// apps/public/static/webcomponents/_webcomponents.js
 import "./ds-button.js";
 // more components here
 

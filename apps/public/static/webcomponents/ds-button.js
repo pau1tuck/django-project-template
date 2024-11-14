@@ -1,3 +1,4 @@
+// apps/public/static/webcomponents/ds-button.js
 class DsButton extends HTMLElement {
   constructor() {
     super();

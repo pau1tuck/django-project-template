@@ -1,3 +1,4 @@
+# apps/integration/telegram/checks.py
 from telegram import __version__ as TG_VER
 
 try:

@@ -1,3 +1,4 @@
+// apps/public/static/js/bulma.js
 document.addEventListener('DOMContentLoaded', () => {
   ;(document.querySelectorAll('.notification .delete') || []).forEach(
     ($delete) => {
