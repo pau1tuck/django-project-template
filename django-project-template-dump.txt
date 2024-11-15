@@ -1,0 +1,4308 @@
+
+==== project_dump.py ====
+import os
+
+output_file = "django-project-template-dump.txt"
+exclude_dir = "./env"
+file_types = (".py", ".js", ".css", ".html", ".yaml", ".json", ".conf", ".txt")
+
+with open(output_file, "w") as out:
+    for root, dirs, files in os.walk("."):
+        # Exclude the env directory and its subdirectories
+        dirs[:] = [d for d in dirs if os.path.join(root, d) != exclude_dir]
+
+        for file in files:
+            if file.endswith(file_types):
+                file_path = os.path.join(root, file)
+                out.write(f"\n==== {file} ====\n")
+                with open(file_path, "r", encoding="utf-8") as f:
+                    out.write(f.read())
+
+==== requirements.txt ====
+amqp==5.3.0
+annotated-types==0.7.0
+asgiref==3.8.1
+asttokens==2.4.1
+billiard==4.2.1
+black==24.10.0
+boto3==1.35.58
+botocore==1.35.58
+celery==5.4.0
+certifi==2024.8.30
+charset-normalizer==3.4.0
+click==8.1.7
+click-didyoumean==0.3.1
+click-plugins==1.1.1
+click-repl==0.3.0
+colorama==0.4.6
+coreapi==2.3.3
+coreschema==0.0.4
+decorator==5.1.1
+dj-database-url==2.3.0
+dj-static==0.0.6
+Django==5.1.3
+django-cors-headers==4.6.0
+django-debug-toolbar==4.4.6
+django-extensions==3.2.3
+django-filter==24.3
+django-htmx==1.21.0
+django-rest-auth==0.9.5
+django-storages==1.14.4
+django-widget-tweaks==1.5.0
+django_components==0.102
+djangorestframework==3.15.2
+djangorestframework-api-key==3.0.0
+executing==2.1.0
+flake8==7.1.1
+gunicorn==23.0.0
+hiredis==2.4.0
+icecream==2.1.3
+idna==3.10
+iniconfig==2.0.0
+ipython==8.29.0
+itypes==1.2.0
+jedi==0.19.2
+Jinja2==3.1.4
+jmespath==1.0.1
+kombu==5.4.2
+Markdown==3.7
+MarkupSafe==3.0.2
+matplotlib-inline==0.1.7
+mccabe==0.7.0
+mypy-extensions==1.0.0
+numpy==2.1.3
+packaging==24.2
+pandas==2.2.3
+parso==0.8.4
+pathspec==0.12.1
+pexpect==4.9.0
+platformdirs==4.3.6
+pluggy==1.5.0
+popoto==0.8.3
+prettytable==2.5.0
+prompt_toolkit==3.0.48
+psycopg2==2.9.10
+ptyprocess==0.7.0
+pure_eval==0.2.3
+pycodestyle==2.12.1
+pydantic==2.9.2
+pydantic_core==2.23.4
+pyflakes==3.2.0
+Pygments==2.18.0
+pytest==8.3.3
+python-dateutil==2.9.0.post0
+python-decouple==3.8
+pytz==2024.2
+PyYAML==6.0.2
+redis==3.5.3
+redisgraph==2.4.4
+requests==2.32.3
+s3transfer==0.10.3
+six==1.16.0
+sqlparse==0.5.1
+stack-data==0.6.3
+static3==0.7.0
+toolz==1.0.0
+traitlets==5.14.3
+typing_extensions==4.12.2
+tzdata==2024.2
+uritemplate==4.1.1
+urllib3==2.2.3
+vine==5.1.0
+wcwidth==0.2.13
+whitenoise==6.8.2
+
+==== runtime.txt ====
+python-3.8.10
+
+==== django-project-template-dump.txt ====
+
+==== redis.conf ====
+databases 16
+dbfilename dump.rdb
+dir /data
+
+==== manage.py ====
+#!/usr/bin/env python
+# manage.py
+import os
+import sys
+
+if __name__ == "__main__":
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError:
+        # The above import may fail for some other reason. Ensure that the
+        # issue is really that Django is missing to avoid masking other
+        # exceptions on Python 2.
+        try:
+            import django
+        except ImportError:
+            raise ImportError(
+                "Couldn't import Django. Are you sure it's installed and "
+                "available on your PYTHONPATH environment variable? Did you "
+                "forget to activate a virtual environment?"
+            )
+        raise
+    execute_from_command_line(sys.argv)
+
+==== celery_beat.py ====
+# settings/celery_beat.py
+import logging
+
+from django_celery_beat.models import PeriodicTask
+from django_celery_beat.models import PeriodicTasks
+from django_celery_beat.schedulers import DatabaseScheduler
+from django.db import transaction
+
+
+class DatabaseSchedulerWithCleanup(DatabaseScheduler):
+    def setup_schedule(self):
+        schedule = self.app.conf.beat_schedule
+        with transaction.atomic():
+            num, info = (
+                PeriodicTask.objects.exclude(task__startswith="celery.")
+                .exclude(name__in=schedule.keys())
+                .delete()
+            )
+            logging.info("Removed %d obsolete periodic tasks.", num)
+            if num > 0:
+                PeriodicTasks.update_changed()
+        super(DatabaseSchedulerWithCleanup, self).setup_schedule()
+
+==== vendor.py ====
+# settings/vendor.py
+import os
+from decouple import config
+
+from settings import LOCAL, STAGE, DEMO, PRODUCTION
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# AWS
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+AWS_STORAGE_BUCKET_NAME = AWS_S3_BUCKET_NAME = os.environ.get("AWS_S3_BUCKET_NAME", "")
+AWS_OPTIONS = {
+    "AWS_ACCESS_KEY_ID": AWS_ACCESS_KEY_ID,
+    "AWS_SECRET_ACCESS_KEY": AWS_SECRET_ACCESS_KEY,
+    "AWS_STORAGE_BUCKET_NAME": AWS_S3_BUCKET_NAME,
+}
+AWS_DEFAULT_ACL = "public-read"
+AWS_SNS_NAME = os.environ.get("AWS_SNS_NAME", "")
+AWS_STATIC_URL = "https://" + AWS_S3_BUCKET_NAME + ".s3.amazonaws.com/"
+
+
+# STATIC FILES
+if not LOCAL:
+    STATIC_URL = AWS_STATIC_URL
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STATICFILES_STORAGE = DEFAULT_FILE_STORAGE
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "redis_cache.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL"),
+    }
+}
+
+
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#    }
+# }
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("DATABASE_NAME"),  # No default values, loaded from .env
+        "USER": config("DATABASE_USER"),
+        "PASSWORD": config("DATABASE_PASSWORD"),
+        "HOST": config(
+            "DATABASE_HOST", default="localhost"
+        ),  # Default to localhost if not set
+        "PORT": config("DATABASE_PORT", default=5432),  # Default to 5432 if not set
+    }
+}
+
+# HEROKU DATABASE
+import dj_database_url
+
+DATABASES = {
+    "default": dj_database_url.config(),
+}
+# Set DATABASE_URL in config if using other host
+# DATABASE_URL = f"postgresql://{username}:{password}@{host}:5432/{dbname}"
+
+
+DEFAULT_FROM_EMAIL = "info@example.com"  # if you don't already have this in settings
+SERVER_EMAIL = "info@example.com"  # ditto (default from-email for Django errors)
+
+# GOOGLE_ANALYTICS_PROPERTY_ID = 'UA-1234567-8'
+# FACEBOOK_PIXEL_ID = '1234567890'
+# HUBSPOT_PORTAL_ID = '1234'
+# HUBSPOT_DOMAIN = 'somedomain.web101.hubspot.com'
+# INTERCOM_APP_ID = '0123456789abcdef0123456789abcdef01234567'
+# OPTIMIZELY_ACCOUNT_NUMBER = '1234567'
+
+==== asgi.py ====
+# settings/asgi.py
+"""
+ASGI config for data project.
+
+It exposes the ASGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/3.2/howto/deployment/asgi/
+"""
+
+import os
+
+from django.core.asgi import get_asgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+
+application = get_asgi_application()
+
+==== redis_db.py ====
+# settings/redis_db.py
+import os
+import logging
+import redis
+
+from settings import DEBUG, LOCAL
+
+SIMULATED_ENV = LOCAL is True
+# todo: use this to mark keys in redis db, so they can be separated and deleted
+
+logger = logging.getLogger("redis_db")
+
+if LOCAL:
+    from settings.local import REDIS_URL
+
+    if REDIS_URL:
+        redis_db = redis.from_url(REDIS_URL)
+    else:
+        REDIS_HOST, REDIS_PORT = "127.0.0.1:6379".split(":")
+        pool = redis.ConnectionPool(host=REDIS_HOST, port=REDIS_PORT, db=0)
+        redis_db = redis.Redis(connection_pool=pool)
+else:
+    redis_db = redis.from_url(os.environ.get("REDIS_URL"))
+
+if DEBUG:
+    logger.info("Redis connection established for app database.")
+    used_memory, maxmemory = int(redis_db.info()["used_memory"]), int(
+        redis_db.info()["maxmemory"]
+    )
+    maxmemory_human = redis_db.info()["maxmemory_human"]
+    if maxmemory > 0:
+        logger.info(
+            f"Redis currently consumes {round(100*used_memory/maxmemory, 2)}% out of {maxmemory_human}"
+        )
+
+==== __init__.py ====
+import logging
+import os
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
+LOGGING_CONFIG = None
+LOGGING = {
+    'django.utils.autoreload': {
+        'level': 'INFO',
+    }
+}
+
+# DEFINE THE ENVIRONMENT TYPE
+PRODUCTION = STAGE = DEMO = LOCAL = False
+dt_key = os.environ.get('DEPLOYMENT_TYPE', "LOCAL")
+if dt_key == 'PRODUCTION':
+    PRODUCTION = True
+    log_level = logging.INFO
+elif dt_key == 'DEMO':
+    DEMO = True
+    log_level = logging.INFO
+elif dt_key == 'STAGE':
+    STAGE = True
+    log_level = logging.DEBUG
+else:
+    LOCAL = True
+    log_level = logging.INFO
+
+logging.basicConfig(level=log_level)
+logger = logging.getLogger(__name__)
+
+from settings.base import *
+from settings.vendor import *
+
+if LOCAL:
+    from settings.local import *
+
+==== local_template.py ====
+# settings/local_template.py
+from decouple import config
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = config("SECRET_KEY")
+
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": config("DATABASE_NAME"),
+        "USER": config("DATABASE_USER"),
+        "PASSWORD": config("DATABASE_PASSWORD"),
+        "HOST": config("DATABASE_HOST"),
+        "PORT": config("DATABASE_PORT"),
+    }
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
+# OR USE REDIS LOCALLY
+REDIS_URL = config("REDIS_URL", default=None)
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+
+# AWS
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+AWS_OPTIONS = {
+    "AWS_ACCESS_KEY_ID": AWS_ACCESS_KEY_ID,
+    "AWS_SECRET_ACCESS_KEY": AWS_SECRET_ACCESS_KEY,
+    "AWS_STORAGE_BUCKET_NAME": AWS_STORAGE_BUCKET_NAME,
+}
+AWS_SNS_NAME = config("AWS_SNS_NAME")
+AWS_STATIC_URL = config("AWS_STATIC_URL")
+
+# OAUTH AND SOCIAL
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = config("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = config("SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET")
+
+==== celery.py ====
+# settings/celery.py
+# Asynchronous task queue settings
+
+import os
+
+# Import the Celery class, which will be used to create a Celery application instance.
+from celery import Celery
+
+# This tells Celery which settings file to use for Django.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+
+# Celery configuration:
+# CELERY_TIMEZONE = "Etc/UCT"  # Optional: Define timezone for task scheduling.
+CELERY_TASK_TRACK_STARTED = True  # Enables tracking of task start times.
+CELERY_TASK_TIME_LIMIT = (
+    3600 * 4
+)  # Set a time limit (in seconds) for task execution; here it's 4 hours.
+# CELERY_RESULT_BACKEND = 'django-db'  # Optional: store task results in Django's database.
+# CELERY_CACHE_BACKEND = 'django-cache'  # Optional: use Django's cache system for task result storage.
+
+
+# Custom Celery class to extend the parent class with overridden task name generation to simplify module paths:
+class MyCelery(Celery):
+    def gen_task_name(self, name, module):
+        # Modify the module path by filtering out specific directories ('apps' and 'tasks') for a cleaner task name.
+        # This avoids cluttering the task name with redundant parts.
+        module = ".".join(
+            [dir for dir in module.split(".") if dir not in ("apps", "tasks")]
+        )
+
+        # Call the parent class's 'gen_task_name' method as proxy object to generate the final task name
+        # using the cleaned module path. This produces a more readable task name.
+        return super().gen_task_name(name, module)
+
+
+# Instantiate the Celery application with a specific name ("data" here).
+celery_app = MyCelery("data")
+
+# Configure Celery using Django settings.
+# Using a string here avoids having to serialize the configuration to child processes.
+# The namespace 'CELERY' means all Celery-related settings in Django should start with 'CELERY_'.
+celery_app.config_from_object("django.conf:settings", namespace="CELERY")
+
+# Automatically discover tasks in Django apps.
+# This lets Celery find tasks defined in each Django app’s 'tasks.py' file.
+celery_app.autodiscover_tasks()
+
+==== urls.py ====
+# settings/urls.py
+from settings import DEBUG
+from django.urls import include, path
+from django.contrib import admin
+from django.views.generic import TemplateView
+from rest_framework.documentation import include_docs_urls
+from django.urls import include
+
+
+urlpatterns = [
+    path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
+    path("", include("apps.public.urls", namespace="public")),
+]
+
+
+# Django Rest Framework API Docs
+API_TITLE, API_DESCRIPTION = "django-project-template API", ""
+urlpatterns += [
+    path("docs/", include_docs_urls(title=API_TITLE, description=API_DESCRIPTION))
+]
+
+# Built-In AUTH and ADMIN
+admin.autodiscover()
+admin.site.site_header = "django-project-template Content Database"
+admin.site.site_title = "django-project-template"
+admin.site.site_url = None
+admin.site.index_title = "Content Database"
+urlpatterns += [
+    path("admin/", admin.site.urls),
+]
+
+# DEBUG MODE
+if DEBUG:
+    import debug_toolbar
+
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ] + urlpatterns
+
+==== base.py ====
+# settings/base.py
+# from __future__ import absolute_import
+import mimetypes
+import os
+from pathlib import Path
+import socket
+from datetime import timedelta
+from decouple import config
+
+
+# DEFINE THE ENVIRONMENT TYPE
+PRODUCTION = STAGE = DEMO = LOCAL = False
+dt_key = config("DEPLOYMENT_TYPE", default="LOCAL")  # Reads from .env file
+if dt_key == "PRODUCTION":
+    PRODUCTION = True
+elif dt_key == "DEMO":
+    DEMO = True
+elif dt_key == "STAGE":
+    STAGE = True
+else:
+    LOCAL = True
+
+DEBUG = LOCAL or STAGE
+BASE_DIR = Path(__file__).resolve().parent.parent
+SITE_ROOT = BASE_DIR
+
+WSGI_APPLICATION = "settings.wsgi.application"
+
+ALLOWED_HOSTS = [
+    # '.mycompany.com',
+    # '.herokuapp.com',
+    # '.amazonaws.com',
+    "localhost",
+    "127.0.0.1",
+]
+
+if LOCAL:
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    CORS_ORIGIN_WHITELIST = [
+        # 'https://myproject-api*.herokuapp.com',
+        # 'https://*.mycompany.com',
+        # 'https://s3.amazonaws.com',
+        # 'https://vendor_api.com',
+        "https://localhost",
+        "https://127.0.0.1",
+    ]
+
+if PRODUCTION:
+    HOSTNAME = "app.mycompany.com"
+elif STAGE:
+    HOSTNAME = "stage.mycompany.com"
+else:
+    try:
+        HOSTNAME = socket.gethostname()
+    except:
+        HOSTNAME = "localhost"
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+# APPLICATIONS
+DJANGO_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # "django_components.safer_staticfiles",  # replaces "django.contrib.staticfiles",
+    "django.contrib.humanize",
+    "django.contrib.sites",
+]
+
+THIRD_PARTY_APPS = [
+    "storages",
+    "django_extensions",
+    # "request", # a statistics module for django. It stores requests in a database for admins to see.
+    # "django_user_agents",
+    "debug_toolbar",
+    "widget_tweaks",
+    "rest_framework",
+    "rest_framework_api_key",
+    "django_filters",
+    "django_htmx",
+    "django_components",
+]
+
+APPS = [
+    "apps.common",
+    # 'apps.integration',
+    "apps.communication",
+    # 'apps.public',
+    # 'apps.api',
+]
+
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + APPS
+SITE_ID = 1
+
+MIDDLEWARE = [
+    "apps.common.utilities.database.django_middleware.APIHeaderMiddleware",
+    # "django_user_agents.middleware.UserAgentMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    # "request_logging.middleware.LoggingMiddleware",
+    # "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # "request.middleware.RequestMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
+]
+
+
+LOGIN_REDIRECT_URL = "/"
+LOGIN_URL = "/account/login"
+
+ROOT_URLCONF = "settings.urls"
+
+# DATABASES -> SEE VENDOR OR LOCAL SETTINGS
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [
+            BASE_DIR / "templates",
+            # BASE_DIR / "apps" / "public" / "templates",
+        ],
+        # "APP_DIRS": True,  # removed for django-components
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                # 'django.template.context_processors.media',
+                "django.contrib.auth.context_processors.auth",
+                "django.template.context_processors.static",
+                "django.contrib.messages.context_processors.messages",
+            ],
+            "loaders": [
+                (
+                    "django.template.loaders.cached.Loader",
+                    [
+                        "django.template.loaders.filesystem.Loader",
+                        "django.template.loaders.app_directories.Loader",
+                        "django_components.template_loader.Loader",
+                    ],
+                )
+            ],
+            "builtins": [
+                "django_components.templatetags.component_tags",
+            ],
+        },
+    },
+]
+
+
+# Static files (CSS, JavaScript, Images)
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_URL = "/static/"
+# Additional locations of static files
+STATICFILES_DIRS = [
+    # BASE_DIR / "static",
+    BASE_DIR / "apps" / "public" / "static",
+    BASE_DIR / "apps" / "public" / "components",
+]
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+mimetypes.add_type("text/javascript", ".js", True)
+mimetypes.add_type("text/css", ".css", True)
+
+
+WSGI_APPLICATION = "settings.wsgi.application"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAdminUser",),
+    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 50,
+}
+
+# Password validation
+PASSWORD_RESET_TIMEOUT_DAYS = 7
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
+# https://django-request.readthedocs.io/en/latest/settings.html#request-ignore-paths
+REQUEST_IGNORE_PATHS = (r"^admin/",)
+
+# Internationalization
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = False
+USE_L10N = False
+USE_TZ = True
+
+AUTH_USER_MODEL = "common.User"
+LOGIN_URL = "/account/login"
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# General apps settings
+if PRODUCTION or STAGE:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+==== production.py ====
+# settings/production.py
+import os
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+==== wsgi.py ====
+# settings/wsgi.py
+import os
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+
+application = get_wsgi_application()
+
+==== dont_put_things_here.txt ====
+use the dashboard/static dir instead
+or mess around with the settings because django isn't looking here after it finds a /static/ in the dashboard app
+
+==== __init__.py ====
+
+==== __init__.py ====
+
+==== telegram.py ====
+# apps/integration/telegram/telegram.py
+from enum import Enum
+import logging
+
+from apps.communication.telegram.checks import checks_done
+from apps.communication.telegram.utilities import handle_telegram_message
+
+if not checks_done:
+    raise RuntimeError("Checks not done")
+
+from asgiref.sync import sync_to_async
+from apps.communication.models import TelegramBotMembership
+from telegram import ReplyKeyboardRemove, Update
+from telegram.ext import (
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+
+class ChatState(Enum):
+    DEFAULT = "default"
+    TEXT = "text"
+    PHOTO = "photo"
+    END = ConversationHandler.END
+
+
+async def text_response(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> ChatState:
+    """Handles the default state where the user can say anything next."""
+
+    response = await sync_to_async(handle_telegram_message)(update, context)
+
+    await update.message.reply_text(response)
+    return ChatState.TEXT
+
+
+async def start_conversation(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> ChatState:
+    """Starts the conversation."""
+    await update.message.reply_text("My name is Steve and I'm here to help.")
+    return ChatState.DEFAULT
+
+
+async def end_conversation(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> ChatState:
+    """Ends the conversation."""
+    user = update.message.from_user
+    logger.info("User %s ended the conversation.", user.first_name)
+    await update.message.reply_text("K Bye!", reply_markup=ReplyKeyboardRemove())
+    return ChatState.END
+
+
+conversation_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", start_conversation)],
+    states={
+        ChatState.DEFAULT: [
+            MessageHandler(filters.ALL, text_response),
+        ],
+        ChatState.TEXT: [
+            MessageHandler(filters.ALL, text_response),
+        ],
+    },
+    fallbacks=[CommandHandler("end", end_conversation)],
+)
+
+==== checks.py ====
+# apps/integration/telegram/checks.py
+from telegram import __version__ as TG_VER
+
+try:
+    from telegram import __version_info__
+except ImportError:
+    __version_info__ = (0, 0, 0, 0, 0)  # type: ignore[assignment]
+
+if __version_info__ < (20, 0, 0, "alpha", 5):
+    raise RuntimeError(
+        f"This example is not compatible with your current PTB version {TG_VER}. To view the "
+        f"{TG_VER} version of this example, "
+        f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
+    )
+
+checks_done = True
+
+==== __init__.py ====
+
+==== utilities.py ====
+# apps/integration/telegram/utilities.py
+from typing import Dict
+
+import requests
+from telegram import Update
+from telegram.ext import CallbackContext
+
+from ai.conversation import Conversation
+from apps.communication.models import TelegramBotMembership
+
+global telegram_bot_membership_conversations
+telegram_bot_membership_conversations: Dict[int, Conversation] = (
+    telegram_bot_membership_conversations or dict()
+)
+
+
+class TelegramBotException(Exception):
+    def __init__(self, user_message="", developer_message=""):
+        self.user_message = user_message
+        self.developer_message = developer_message
+
+
+def handle_telegram_message(update: Update, context: CallbackContext):
+    # get user membership
+    telegram_bot_membership, um_created = TelegramBotMembership.objects.get_or_create(
+        telegram_user_id=str(update.message.from_user.id)
+    )
+    if not update.message.text:
+        return "just text chat for now pls"
+
+    text_response = ""
+
+    # get conversations from global scope dict
+    global telegram_bot_membership_conversations
+    conversation = telegram_bot_membership_conversations.get(telegram_bot_membership.id)
+    if not conversation:
+        text_response = "Hi, I'm Steve. Starting a new conversation...\n\n"
+        conversation = Conversation(
+            bot_name="Steve",
+            human_name=telegram_bot_membership.telegram_user.first_name
+            or telegram_bot_membership.telegram_user.username,
+        )
+        telegram_bot_membership.telegram_user_dict = {
+            k: v
+            for k, v in update.message.from_user.to_dict().items()
+            if not k.startswith("_")
+        }
+        telegram_bot_membership.save()
+
+    # get response from conversational LLM
+    text_response += conversation.prompt(update.message.text)
+    # update conversation in global scope
+    telegram_bot_membership_conversations[telegram_bot_membership.id] = conversation
+    return text_response
+
+
+def send_photo(telegram_bot_membership, local_file_path):
+    # see https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets#post-an-image-file-from-disk
+    telegram_bot_membership.telegram_bot.send_photo(
+        chat_id=telegram_bot_membership.telegram_user.effective_chat_id,
+        photo=open(local_file_path, "rb"),
+    )
+
+
+def send_cute_puppy_photo(self, bot, chat_id, caption=""):
+    doggy_response = requests.get(
+        url="https://dog.ceo/api/breeds/image/random", params={}
+    )
+    data = doggy_response.json()
+    if data.get("status") == "success" and data.get("message", "").startswith(
+        "https://images.dog.ceo"
+    ):
+        dog_photo_url = data["message"]
+        bot.send_photo(chat_id=chat_id, photo=dog_photo_url, caption=caption)
+
+==== commands_index.py ====
+# apps/integration/telegram/commands/commands_index.py
+from telegram import Message
+from apps.communication.telegram.commands.decorator import telegram_command
+from apps.communication.telegram.commands import start, random_dog
+from apps.communication.telegram.commands import help, info
+
+
+# DEFAULT COMMANDS #
+@telegram_command("hello", response_type="text")
+def hello(telegram_bot_membership, message: Message, context):
+    return f"hello, {message.from_user.first_name}"
+
+
+@telegram_command("echo")
+def echo(telegram_bot_membership, message: Message, context):
+    return "Thanks for the args: \n\n" + "\n".join(context.args)
+
+
+@telegram_command("expectations", response_type="text")
+def expectations(telegram_bot_membership, message: Message, context):
+    return "Expecting the following: " + ",".join(
+        telegram_bot_membership.expectations_list
+    )
+
+
+# UNKNOWN COMMAND - CATCHES ALL ELSE
+def unknown_command(update, context):
+    """Unknown command"""
+    context.bot.send_message(
+        chat_id=update.message.chat_id, text="Sorry, I didn't understand that command."
+    )
+
+
+standard_commands = [
+    start.start,
+    help.help_command_list,
+    info.info,
+]
+
+feature_commands = [
+    random_dog.random_dog,
+]
+
+public_commands = standard_commands + feature_commands
+
+commands = (
+    standard_commands
+    + feature_commands
+    + [
+        # TEST EXAMPLE COMMANDS
+        hello,
+        expectations,
+        echo,
+    ]
+)
+
+expectation_handlers = {
+    # "photo_for_dog_breed": dog_breeds.handle_photo_upload,
+}
+
+==== decorator.py ====
+# apps/integration/telegram/commands/decorator.py
+from textwrap import dedent
+from typing import Callable
+
+from telegram import Update
+from telegram.ext import CallbackContext
+
+
+def telegram_command(execution_handle: str, response_type=None):
+    def telegram_command_decorator(get_response: Callable):
+        from apps.communication.models import TelegramBotMembership
+
+        def command_wrapper(update: Update, context: CallbackContext, *args, **kwargs):
+            (
+                telegram_bot_membership,
+                tbm_created,
+            ) = TelegramBotMembership.objects.get_or_create(
+                telegram_user_id=str(update.message.from_user.id)
+            )
+
+            # run command with (or without) args and get response
+            response = get_response(
+                telegram_bot_membership=telegram_bot_membership,
+                message=update.message,
+                context=context,
+                *args,
+            )
+
+            # send response back to user
+            if response_type == "text" or response_type.lower() in ["text", "string"]:
+                update.message.reply_text(response)
+
+            elif response_type == "markdown":
+                update.message.reply_markdown(dedent(response))
+
+            # elif response_type == 'photo':
+            #     update.message.reply_photo(response)
+
+            # todo: check chat_id is registered. if not, register user after response.
+            # chat_id = update.message.chat_id
+
+        command_wrapper.execution_handle = execution_handle
+        command_wrapper.help_text = ""
+
+        return command_wrapper
+
+    return telegram_command_decorator
+
+==== __init__.py ====
+
+==== start.py ====
+# apps/integration/telegram/commands/start.py
+import logging
+
+from telegram import Message
+
+from apps.common.models import User
+from apps.communication.telegram.commands.decorator import telegram_command
+
+
+@telegram_command("start", response_type="text")
+def start(telegram_bot_membership, message: Message, context):
+    from apps.communication.telegram.commands.commands_index import feature_commands
+
+    logging.debug(context.__dict__)
+    if len(context.args) == 1:
+        (username, four_digit_login_code) = context.args[0].split(":", 1)
+        user = User.objects.get(username=username)
+        if user.four_digit_login_code == four_digit_login_code:
+            telegram_bot_membership.telegram_user_dict = {
+                k: v
+                for k, v in message.from_user.__dict__.items()
+                if not k.startswith("_")
+            }
+            telegram_bot_membership.save()
+
+    return "\n".join(
+        [
+            "This is the Telegram Bot for Django Project Template",
+            # "Follow @aihelps on [Twitter](https://twitter.com/aihelps) " +
+            # "and [YouTube](https://youtube.com/channel/UCh7iHrTU8GIGGUOhTvCM3Dg) to learn how to build AI bots like this.",
+            # "Or get an email for new blog posts via [Substack](https://aihelps.substack.com)",
+            "",
+            "Tap a command to do something:",
+        ]
+        + [
+            "/%s - %s" % (command.execution_handle, command.help_text)
+            for command in feature_commands
+        ]
+    )
+
+
+start.help_text = "get started"
+
+==== help.py ====
+# apps/integration/telegram/commands/help.py
+from apps.communication.telegram.commands.decorator import telegram_command
+from telegram import Message
+
+
+@telegram_command("help", response_type="text")
+def help_command_list(telegram_bot_membership, message: Message, context):
+    from apps.communication.telegram.commands.commands_index import public_commands
+
+    return "\n".join(
+        [
+            "Available commands:",
+        ]
+        + [
+            "/%s - %s" % (command.execution_handle, command.help_text)
+            for command in public_commands
+        ]
+    )
+
+
+help_command_list.help_text = "list of available commands"
+
+==== info.py ====
+# apps/integration/telegram/commands/info.py
+""" Commands:
+
+info - Information
+"""
+from telegram import Message
+from apps.communication.telegram.commands.decorator import telegram_command
+
+
+@telegram_command("info", response_type="markdown")
+def info(telegram_bot_membership, message: Message, context):
+    return "This is you: \n\n" + "\n".join(
+        [
+            f"  *•* `{key}` =  `{value}`"
+            for key, value in message.from_user.__dict__.items()
+        ]
+    )
+
+
+info.help_text = "info on your account"
+
+==== random_dog.py ====
+# apps/integration/telegram/commands/random_dog.py
+import requests
+from apps.communication.telegram.commands.decorator import telegram_command
+from telegram import Message
+
+
+@telegram_command("random_dog")
+def random_dog(telegram_bot_membership, message: Message, context):
+    doggy_response = requests.get(
+        url="https://dog.ceo/api/breeds/image/random", params={}
+    )
+    data = doggy_response.json()
+    if data.get("status") == "success" and data.get("message", "").startswith(
+        "https://images.dog.ceo"
+    ):
+        dog_photo_url = data["message"]
+        context.bot.send_photo(
+            chat_id=message.chat_id,
+            photo=dog_photo_url,
+            caption="here's a random dog 🐕 enjoy!",
+        )
+    else:
+        message.reply_text(f"sorry. dog.ceo is having a bad day... \k{data}")
+
+
+random_dog.help_text = "get a random dog photo"
+
+==== manifest.yaml ====
+# apps/integration/slack/config/manifest.yaml
+{
+    "display_information": {
+        "name": "Test App 1"
+    },
+    "settings": {
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": false,
+        "is_hosted": false,
+        "token_rotation_enabled": false
+    }
+}
+==== __init__.py ====
+
+==== apps.py ====
+# apps/common/apps.py
+from django.apps import AppConfig
+
+
+class CommonConfig(AppConfig):
+    name = "apps.common"
+    label = "common"
+    default_auto_field = "django.db.models.BigAutoField"
+
+==== admin.py ====
+# apps/common/admin.py
+from django.contrib import admin
+from apps.common.models import User
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    pass
+
+==== test_behaviors.py ====
+# apps/common/tests/test_behaviors.py
+class BehaviorTestCaseMixin(object):
+    def get_model(self):
+        return getattr(self, "model")
+
+    def create_instance(self, **kwargs):
+        raise NotImplementedError("Implement me")
+
+==== __init__.py ====
+
+==== tests.py ====
+# apps/common/tests/tests.py
+from django.test import TestCase
+
+# Create your tests here.
+
+==== test_timestampable.py ====
+# apps/common/tests/test_behaviors/test_timestampable.py
+from datetime import datetime
+import pytz
+from unittest import mock
+
+from django.utils import timezone
+
+from .test_mixins import BehaviorTestCaseMixin
+
+
+class TimestampableTest(BehaviorTestCaseMixin):
+    def test_save_model_should_save_create_time(self):
+        now = timezone.now()
+
+        with mock.patch("django.utils.timezone.now") as mock_now:
+            mock_now.return_value = now
+            obj = self.create_instance()
+            self.assertEqual(obj.create_date, now)
+
+    def test_edit_data_in_model_should_not_override_create_time(self):
+        first_time = datetime(2015, 1, 1, tzinfo=pytz.UTC)
+        second_time = datetime(2016, 2, 2, tzinfo=pytz.UTC)
+
+        with mock.patch("django.utils.timezone.now") as mock_now:
+            mock_now.side_effect = [first_time, first_time, second_time, second_time]
+            obj = self.create_instance()
+            obj.save()
+            self.assertEqual(obj.create_date, first_time)
+
+    def test_edit_data_in_model_should_override_modified_time(self):
+        first_time = datetime(2015, 1, 1, tzinfo=pytz.UTC)
+        second_time = datetime(2016, 2, 2, tzinfo=pytz.UTC)
+
+        with mock.patch("django.utils.timezone.now") as mock_now:
+            mock_now.side_effect = [first_time, first_time, second_time, second_time]
+            obj = self.create_instance()
+            obj.save()
+            self.assertEqual(obj.modified_date, second_time)
+
+    def test_save_model_should_save_modified_time(self):
+        now = timezone.now()
+
+        with mock.patch("django.utils.timezone.now") as mock_now:
+            mock_now.return_value = now
+            obj = self.create_instance()
+            self.assertEqual(obj.modified_date, now)
+
+==== __init__.py ====
+from .test_authorable import AuthorableTest
+from .test_timestampable import TimestampableTest
+
+__all__ = ['AuthorableTest', 'TimestampableTest']
+
+==== test_mixins.py ====
+# apps/common/tests/test_behaviors/test_mixins.py
+class BehaviorTestCaseMixin(object):
+    @property
+    def model(self):
+        raise NotImplementedError("Implement Me")
+
+    def create_instance(self, **kwargs):
+        return self.model.objects.create(**kwargs)
+
+==== test_authorable.py ====
+# apps/common/tests/test_behaviors/test_authorable.py
+from unittest import mock
+
+from django.utils import timezone
+
+from .test_mixins import BehaviorTestCaseMixin
+
+
+class AuthorableTest(BehaviorTestCaseMixin):
+    def test_save_authored_at_should_store_data_correctly(self):
+        now = timezone.now()
+
+        with mock.patch("django.utils.timezone.now") as mock_now:
+            mock_now.return_value = now
+            obj = self.create_instance(authored_at=now)
+            self.assertEqual(obj.authored_at, now)
+
+    def test_should_store_author(self):
+        obj = self.create_instance()
+        self.assertEqual(obj.author, self.user)
+
+==== test_address.py ====
+# apps/common/tests/test_models/test_address.py
+from django.test import TestCase
+
+from ..test_behaviors import TimestampableTest
+from ...models import Address
+
+
+class AddressTest(TimestampableTest, TestCase):
+    model = Address
+
+==== __init__.py ====
+
+==== test_currency.py ====
+# apps/common/tests/test_models/test_currency.py
+from django.test import TestCase
+
+from ..test_behaviors import TimestampableTest
+from ...models import Currency
+
+
+class CurrencyTest(TimestampableTest, TestCase):
+    model = Currency
+
+==== test_upload.py ====
+# apps/common/tests/test_models/test_upload.py
+from django.test import TestCase
+
+from ..test_behaviors import TimestampableTest
+from ...models import Upload
+
+
+class UploadTest(TimestampableTest, TestCase):
+    model = Upload
+
+==== test_country.py ====
+# apps/common/tests/test_models/test_country.py
+
+==== test_note.py ====
+# apps/common/tests/test_models/test_note.py
+from django.contrib.auth.models import User
+from django.test import TestCase
+
+from ..test_behaviors import AuthorableTest, TimestampableTest
+from ...models import Note
+
+
+class NoteTest(AuthorableTest, TimestampableTest, TestCase):
+    model = Note
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="prince", email="prince@p.com", password="password"
+        )
+
+    def create_instance(self, **kwargs):
+        return Note.objects.create(author=self.user, **kwargs)
+
+==== city.py ====
+# apps/common/models/city.py
+import uuid
+from django.db import models
+
+
+class City(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True, blank=True)
+    code = models.CharField(
+        max_length=3, unique=True, blank=True
+    )  # typically the airport code
+
+    # assuming cities stick to one country nationwide
+    country = models.ForeignKey(
+        "common.Country", related_name="cities", null=False, on_delete=models.PROTECT
+    )
+
+    # MODEL PROPERTIES
+    @property
+    def currency(self):
+        return self.country.currency
+
+    # MODEL FUNCTIONS
+    def __str__(self):
+        return f"{self.name}, {self.country.name} ({self.code})"
+
+    class Meta:
+        verbose_name_plural = "cities"
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+
+@receiver(pre_save, sender=City)
+def lowercase_code(sender, instance, **kwargs):
+    instance.code = instance.code.lower()
+
+==== address.py ====
+# apps/common/models/address.py
+import uuid
+
+from django.db import models
+from django.forms import ModelForm
+
+from apps.common.behaviors.timestampable import Timestampable
+
+
+class Address(Timestampable, models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    line_1 = models.CharField(max_length=100, null=True, blank=True)
+    line_2 = models.CharField(max_length=100, null=True, blank=True)
+    line_3 = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=35, null=True, blank=True)
+    region = models.CharField(max_length=35, null=True, blank=True)
+    postal_code = models.CharField(max_length=10, null=True, blank=True)
+    country = models.ForeignKey(
+        "common.Country", related_name="addresses", null=True, on_delete=models.SET_NULL
+    )
+
+    google_map_link = models.URLField(null=True, blank=True)
+
+    # MODEL PROPERTIES
+    @property
+    def inline_string(self) -> str:
+        string = "%s " % self.line_1
+        string += "%s" % self.city or ""
+        string += ", %s " % self.region or ""
+        return string
+
+    @property
+    def google_map_url(self) -> str:
+        return (
+            self.google_map_link
+            or "http://maps.google.com/?q=%s" % self.inline_string.replace(" ", "%20")
+        )
+
+    # MODEL FUNCTIONS
+    def __str__(self):
+        return str(self.inline_string)
+
+    class Meta:
+        verbose_name_plural = "addresses"
+
+
+class AddressForm(ModelForm):
+    class Meta:
+        model = Address
+        fields = [
+            "line_1",
+            "line_2",
+            "line_3",
+            "city",
+            "region",
+            "postal_code",
+            "country",
+        ]
+        required_fields = ["line_1", "city", "postal_code", "country"]
+
+==== user.py ====
+# apps/common/models/User.py
+from django.utils.translation import gettext_lazy as _
+from datetime import datetime
+import hashlib
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
+from apps.common.behaviors import Timestampable
+
+
+class User(AbstractUser, Timestampable):
+    phone_number = models.CharField(max_length=15, default="", blank=True)
+
+    # birthdate = models.DateField(null=True, blank=True)
+
+    is_email_verified = models.BooleanField(default=False)
+    is_beta_tester = models.BooleanField(default=False)
+    agreed_to_terms_at = models.DateTimeField(null=True, blank=True)
+
+    # stripe_customer = models.ForeignKey(
+    #     "djstripe.Customer", null=True, blank=True, on_delete=models.PROTECT
+    # )
+
+    # MODEL PROPERTIES
+    @property
+    def serialized(self):
+        return {
+            "username": self.username,
+            "email": self.email,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "is_staff": self.is_staff,
+            "is_active": self.is_active,
+        }
+
+    @property
+    def four_digit_login_code(self):
+        if self.email.endswith("@example.com"):
+            return "1234"  # for test accounts
+        hash_object = hashlib.md5(
+            bytes(f"{self.id}{self.email}{self.last_login}", encoding="utf-8")
+        )
+        return str(int(hash_object.hexdigest(), 16))[-4:]
+
+    @property
+    def is_agreed_to_terms(self) -> bool:
+        if self.agreed_to_terms_at and self.agreed_to_terms_at > timezone.make_aware(
+            datetime(2019, 11, 1)
+        ):
+            return True
+        return False
+
+    @is_agreed_to_terms.setter
+    def is_agreed_to_terms(self, value: bool):
+        if value is True:
+            self.agreed_to_terms_at = timezone.now()
+        elif value is False and self.is_agreed_to_terms:
+            self.agreed_to_terms_at = None
+
+    # MODEL FUNCTIONS
+    def __str__(self):
+        try:
+            if self.first_name:
+                return self.first_name + (
+                    f" {self.last_name}" if self.last_name else ""
+                )
+            if self.username and "@" not in self.username:
+                return self.username
+            if self.is_email_verified:
+                return self.email.split("@")[0]
+            else:
+                return f"{self.email} (unverified)"
+        except:
+            return f"User {self.id}"
+
+==== upload.py ====
+# apps/common/models/upload.py
+from django.db import models
+from mimetypes import guess_type
+from ..behaviors import Timestampable
+
+
+class Upload(Timestampable, models.Model):
+    """
+    A model representing an uploaded file, including its metadata and properties.
+
+    This model stores information about uploaded files, including the original URL,
+    name, thumbnail, and various metadata. It also provides properties to access
+    specific attributes such as file type, dimensions, and extensions.
+
+    Attributes:
+        original (str): The original URL of the uploaded file.
+        name (str): The name of the file, if available.
+        thumbnail (str): The URL of the thumbnail image, if available.
+        meta_data (Dict): A JSON field containing additional metadata about the file.
+
+    Properties:
+        file_type (str): The type of the file, extracted from the metadata.
+        is_image (bool): A flag indicating whether the file is an image.
+        is_pdf (bool): A flag indicating whether the file is a PDF.
+        width (int): The width of the image, if applicable.
+        height (int): The height of the image, if applicable.
+        file_extension (str): The file extension, extracted from the metadata.
+        link_title (str): A formatted title for the link, based on the name, type, and extension.
+
+    Note:
+        The properties `width` and `height` are only applicable if the file is an image.
+        The `meta_data` field is expected to contain keys such as 'type', 'ext', 'meta', and 'etc',
+        depending on the specific use case and the information available about the uploaded file.
+    """
+
+    original = models.URLField(default="")
+    name = models.CharField(max_length=50, blank=True, null=True)
+    thumbnail = models.URLField(default="", blank=True, null=True)
+    meta_data = models.JSONField(blank=True, null=True)
+
+    @property
+    def mime_type(self):
+        return self.meta_data.get("mime_type", "")
+
+    @property
+    def file_type(self):
+        (mime_type, encoding) = guess_type(self.original)
+        return mime_type or self.mime_type
+
+    @property
+    def is_image(self):
+        return True if "image" in self.file_type else False
+
+    @property
+    def is_pdf(self):
+        return True if "pdf" in self.file_type else False
+
+    @property
+    def width(self):
+        if self.is_image:
+            return (
+                self.meta_data["meta"].get("width")
+                if self.meta_data.get("meta")
+                else None
+            )
+
+    @property
+    def height(self):
+        if self.is_image:
+            return (
+                self.meta_data["meta"].get("height")
+                if self.meta_data.get("meta")
+                else None
+            )
+
+    @property
+    def file_extension(self):
+        return self.meta_data.get("ext", "")
+
+    @property
+    def dimensions(self):
+        if self.is_image or self.is_video:
+            return (
+                (
+                    self.meta_data["meta"].get("width"),
+                    self.meta_data["meta"].get("height"),
+                )
+                if self.meta_data.get("meta")
+                else (None, None)
+            )
+
+    @property
+    def link_title(self):
+        if self.name:
+            title = self.name
+        elif "etc" in self.meta_data:
+            title = (self.meta_data["etc"] or "").upper()
+        else:
+            title = (
+                (self.meta_data["type"] or "").upper()
+                if "type" in self.meta_data
+                else ""
+            )
+        if "ext" in self.meta_data:
+            title = title + " .%s" % (self.meta_data["ext"] or "").upper()
+        return title
+
+==== __init__.py ====
+from .country import Country
+from .address import Address
+from .currency import Currency
+from .upload import Upload
+from .document import Document
+from .image import Image
+from .user import User
+
+__all__ = [
+    "Country",
+    "Address",
+    "Currency",
+    "Upload",
+    "Document",
+    "Image",
+    "User",
+]
+
+==== country.py ====
+# apps/common/models/country.py
+import uuid
+from django.db import models
+
+
+class Country(models.Model):  # could expand on pypi.python.org/pypi/django-countries
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True, blank=True)
+    code = models.CharField(
+        max_length=3,
+        unique=True,
+        blank=True,
+        help_text="ISO 3166-1 alpha-2 (eg. US, TH, GB)",
+    )
+    calling_code = models.CharField(
+        max_length=3,
+        blank=True,
+        help_text="e.g. '1' for (+1 USA) or '66' (+66 TH)",
+    )
+
+    # assuming countries stick to one currency nationwide
+    currency = models.ForeignKey(
+        "common.Currency",
+        related_name="countries",
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+
+    # MODEL PROPERTIES
+
+    # MODEL FUNCTIONS
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "countries"
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+
+@receiver(pre_save, sender=Country)
+def lowercase_code(sender, instance, **kwargs):
+    instance.code = instance.code.lower()
+
+==== document.py ====
+# apps/common/models/document.py
+from . import Upload
+from django.db import models
+
+accepted_file_types = ["pdf", "doc", "docx", "rtf", "pages"]
+
+
+class Document(Upload, models.Model):
+    """
+    Represents a generic document that can be uploaded.
+
+    This class serves as a base for specific document types and includes common attributes
+    and behaviors related to uploading and timestamping.
+
+    Attributes:
+        Inherits attributes from the Uploadable and Timestampable mixins.
+
+    Methods:
+        display: A property that must be implemented by subclasses to provide the HTML
+            to display for the document.
+
+    Note:
+        This class is intended to be subclassed by specific document types.
+    """
+
+    @property
+    def display(self):
+        """
+        Implemented by subclasses
+        :return: string containing the HTML to display for this document
+        """
+        pass
+
+
+class PDF(Document):
+    """
+    Represents a PDF document.
+
+    This class extends the Document class and provides specific behavior for PDF documents.
+
+    Methods:
+        display: Returns a string representing the HTML to display for a PDF document.
+    """
+
+    @property
+    def display(self):
+        return "PDF Document"
+
+
+def create(ext):
+    """
+    Factory function to create a database object based on the file extension and save it.
+
+    :param ext: file extension (str). Must be one of the accepted_file_types.
+    :return: Database object corresponding to the extension. Currently supports PDF only.
+    :raises: ValueError if the extension is not in accepted_file_types.
+    """
+    ext = ext.lower()
+    if ext == accepted_file_types[0]:
+        doc_object = Document.objects.create()
+        return doc_object
+    else:
+        raise ValueError(f"Extension {ext} is not supported.")
+
+==== currency.py ====
+# apps/common/models/currency.py
+import uuid
+from django.db import models
+from apps.common.behaviors import Timestampable
+
+
+class Currency(Timestampable, models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    code = models.CharField(
+        max_length=3,
+        unique=True,
+        help_text="ISO 4217 currency code (eg. USD, THB, GBP)",
+    )
+
+    # MODEL PROPERTIES
+
+    # MODEL FUNCTIONS
+    def __str__(self):
+        return str(self.code).upper()
+
+    class Meta:
+        verbose_name_plural = "currencies"
+
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+
+@receiver(pre_save, sender=Currency)
+def lowercase_code(sender, instance, **kwargs):
+    instance.code = instance.code.lower()
+
+==== note.py ====
+# apps/common/models/note.py
+import uuid
+from django.db import models
+from apps.common.behaviors import Timestampable, Authorable
+
+
+class Note(Timestampable, Authorable, models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    text = models.TextField(default="", blank=True)
+
+    # MODEL PROPERTIES
+
+    # MODEL FUNCTIONS
+
+==== image.py ====
+# apps/common/models/image.py
+from django.db import models
+
+from apps.common.models import Upload
+
+ACCEPTED_FILE_TYPES = ["jpg", "gif", "png"]
+
+
+class Image(Upload, models.Model):
+    thumbnail_url = models.URLField(default="", null=True, blank=True)
+
+    # INCLUDED BY MIXINS
+    # url = str
+    # id = uuid
+    # meta_data = dict
+    # created_at = datetime
+    # modified_at = datetime
+
+    # MODEL PROPERTIES
+    @property
+    def width(self):
+        if self.is_image:
+            return (
+                self.meta_data["meta"].get("width")
+                if self.meta_data.get("meta")
+                else None
+            )
+
+    @property
+    def height(self):
+        if self.is_image:
+            return (
+                self.meta_data["meta"].get("height")
+                if self.meta_data.get("meta")
+                else None
+            )
+
+==== background_job.py ====
+# apps/common/models/background_job.py
+from datetime import datetime
+
+from django.db import models
+
+
+class BackgroundJob(models.Model):
+    name = models.CharField(max_length=64, null=True)
+    description = models.CharField(max_length=1000, null=True, blank=True)
+
+    start_run_at = models.DateTimeField(auto_now_add=True)
+    end_run_at = models.DateTimeField(null=True)
+
+    has_errors = models.BooleanField(null=False, default=False)
+    is_failed = models.BooleanField(null=False, default=True)
+    logs = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def execution_time_humanized(self) -> str:
+        if not self.start_run_at:
+            return ""
+        seconds = ((self.end_run_at or datetime.today()) - self.start_run_at).seconds
+        hours = seconds // 3600
+        seconds -= hours * 3600
+        minutes = seconds // 60
+        seconds -= minutes * 60
+        return (
+            (f"{hours} hr, " if hours else "")
+            + (f"{minutes} min, " if minutes or hours else "")
+            + f"{seconds} s"
+        )
+
+==== __init__.py ====
+
+==== logger.py ====
+# apps/common/utilities/logger.py
+# import the logging library
+import logging
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
+
+==== email.py ====
+# apps/common/utilities/email.py
+from django.core.mail import EmailMessage
+
+
+def email_to_string(e):
+    # type: (EmailMessage) -> str
+    def n(x):
+        x or "Not specified"
+
+    return """
+From: {}
+To: {}
+Subject: {}
+Reply-To: {}
+CC: {}
+BCC: {}
+Body: {}
+Attachments: {}
+""".format(
+        n(e.from_email),
+        n(e.to),
+        n(e.subject),
+        n(e.reply_to),
+        n(e.cc),
+        n(e.bcc),
+        n(e.body),
+        n(str(e.attachments)),
+    )
+
+==== db.py ====
+# apps/common/utilities/database/db.py
+import typing
+from typing import List, Tuple
+from enum import Enum
+
+
+def enum_to_choices(enum: Enum) -> List[Tuple[int, str]]:
+    return [(i.value, i.name) for i in enum]
+
+==== model_fields.py ====
+# apps/common/utilities/database/model_fields.py
+from django.core.exceptions import ValidationError
+from django.db import models
+
+
+# https://djangosnippets.org/snippets/1741/
+# http://stackoverflow.com/questions/28529179/django-creating-a-custom-model-field
+class MoneyField(models.IntegerField):
+    description = "A field to save a currency as cents(int) "
+    description += "in db, but act like a float"
+
+    def get_db_prep_value(self, value, *args, **kwargs):
+        if value is None:
+            return None
+        return int(round(value * 100))
+
+    def to_python(self, value):
+        if value is None or isinstance(value, float):
+            return value
+        try:
+            return float(value) / 100
+        except (TypeError, ValueError):
+            msg = "This value must be an integer or a "
+            msg += "string represents an integer."
+            raise ValidationError(msg)
+
+    def from_db_value(self, value, expression, connection, context):
+        return self.to_python(value)
+
+    def formfield(self, **kwargs):
+        from django.forms import FloatField
+
+        defaults = {"form_class": FloatField}
+        defaults.update(kwargs)
+        return super(MoneyField, self).formfield(**defaults)
+
+==== __init__.py ====
+
+==== serializers.py ====
+# apps/common/utilities/processing/serializers.py
+import six
+from rest_framework import serializers
+from timezone_field import TimeZoneField as TimeZoneModelField
+
+
+# Reference: https://github.com/mfogel/django-timezone-field/issues/29
+class TimeZoneField(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(TimeZoneModelField.CHOICES + [(None, "")], **kwargs)
+
+    def to_representation(self, value):
+        return six.text_type(super().to_representation(value))
+
+
+# https://github.com/encode/django-rest-framework/issues/2734#issuecomment-478077325
+class WritableSerializerMethodField(serializers.SerializerMethodField):
+
+    def __init__(self, method_name=None, **kwargs):
+        self.method_name = method_name
+        self.setter_method_name = kwargs.pop("setter_method_name", None)
+        self.deserializer_field = kwargs.pop("deserializer_field")
+
+        kwargs["source"] = "*"
+        super(serializers.SerializerMethodField, self).__init__(**kwargs)
+
+    def bind(self, field_name, parent):
+        retval = super().bind(field_name, parent)
+        if not self.setter_method_name:
+            self.setter_method_name = f"set_{field_name}"
+
+        return retval
+
+    def to_internal_value(self, data):
+        value = self.deserializer_field.to_internal_value(data)
+        method = getattr(self.parent, self.setter_method_name)
+        method(value)
+        return {}
+
+==== unicode_tools.py ====
+# apps/common/utilities/processing/unicode_tools.py
+import typing
+from typing import List, Callable
+import unicodedata
+import re
+import toolz
+from toolz import complement  # "flips" result of function, i.e. True == False
+
+
+# Removes all control characters - Including line feeds and carriage returns.
+def clean_text(text: str) -> str:
+    return filter_text(text, complement(is_control_char))
+
+
+def filter_text(text: str, filters: List[Callable[[str], bool]]) -> str:
+    # Applies the filters in the order given
+    return "".join(list(filter(lambda c: toolz.pipe(c, filters), text)))
+    # return "".join(list(filter(lambda x: ord(x) == 32 or 32 < ord(x) < 127,
+    #                            text)))
+
+
+def is_control_char(ch: str) -> bool:
+    return unicodedata.category(ch)[0] == "C"
+
+
+def remove_control_chars(string):
+    return "".join(list(filter(complement(is_control_char), string)))
+
+
+def remove_html_tags(s: str) -> str:
+    return re.sub("(?i)<(?!img|/img).*?>", "", s).strip()
+
+==== __init__.py ====
+
+==== english_language.py ====
+# apps/common/utilities/processing/english_language.py
+import string
+
+
+# MODEL FUNCTIONS
+def build_english_list(items):
+    result = ""
+
+    if len(items) == 0:
+        return result
+
+    if len(items) == 1:
+        return items[0]
+
+    if len(items) == 2:
+        return items[0] + " and " + items[1]
+
+    for i, item in enumerate(items):
+        item = item.strip()
+
+        # If last one.
+        if i + 1 == len(items):
+            result += "and " + item
+        else:
+            result += item + ", "
+
+    return result
+
+
+def cap_first_word(arg):
+    if type(arg) == str:
+        s = arg.strip()
+        return s[0].upper() + s[1:None]
+
+    if type(arg) == list:
+        return [string.capwords(arg[0])] + arg[1:None]
+
+    raise TypeError("Invalid type passed to function: " + type(arg))
+
+
+def last_char(s):
+    return s[len(s) - 1]
+
+
+def ends_with_period(s):
+    return bool(s[-1:] == ".")
+
+==== regex.py ====
+# apps/common/utilities/processing/regex.py
+import re
+
+
+# EXTRACT EMAIL WITH REGEX
+def extractEmail(string, return_all=True):
+    regex = re.compile(
+        (
+            "([a-z0-9!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/=?^_`"
+            "{|}~-]+)*(@|\sat\s)(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(\.|"
+            "\sdot\s))+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)"
+        )
+    )
+
+    emails = [
+        email[0]
+        for email in re.findall(regex, string.lower())
+        if not email[0].startswith("//")
+    ]
+    if len(emails):
+        return emails if return_all else emails[0]
+
+==== multithreading.py ====
+# apps/common/utilities/processing/multithreading.py
+# A DECORATOR FOR PYTHON THREADING
+# http://docs.python.org/2/library/threading.html#thread-objects
+# http://stackoverflow.com/questions/18420699/multithreading-for-python-django
+from threading import Thread
+
+
+def start_new_thread(function):
+    """
+    if running any database transactions,
+    include this at the end of your function
+        ```
+        from django.db import connection
+        connection.close()
+        ```
+    """
+
+    def decorator(*args, **kwargs):
+        t = Thread(target=function, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
+
+    return decorator
+
+
+def run_all_multithreaded(function_def, list_of_params):
+    """
+    :param function_def: the function to pass params to
+    :param list_of_params: list of function params, for multiple-param functions, pass tuples
+    :return:
+    """
+
+    from multiprocessing.dummy import Pool as ThreadPool
+
+    # make the Pool of workers
+    pool = ThreadPool(16)
+
+    # open functions in their own threads
+    # and compile all the results
+    results = pool.map(function_def, list_of_params)
+
+    # close the pool and wait for the work to finish
+    pool.close()
+    pool.join()
+
+    return results
+
+==== image_compresssion.py ====
+# apps/common/utilities/compression/image_compresssion.py
+import numpy as np
+from PIL import Image
+
+
+def zoom_and_crop(
+    image: Image,
+    zoom: float = 0,
+    angle_from_center: float = 0,
+    distance_from_center: float = 0,
+    is_orig_image_landscape=True,
+    resize_dimensions=(100, 100),
+):
+    # suggest adjusting zoom (from 0->1) or distance_from_center (from 0->1), not both too much together
+    # angle_from_center should be random between 0 and 2*pi
+
+    shorter_edge = (
+        image.height if is_orig_image_landscape else (min([image.height, image.width]))
+    )
+    center_x, center_y = image.width / 2, image.height / 2
+
+    if distance_from_center:
+        distance_pixels_x = distance_from_center * 0.8 * image.width / 2
+        distance_pixels_y = distance_from_center * 0.8 * image.height / 2
+
+        center_x += np.cos(angle_from_center) * distance_pixels_x
+        center_y += np.sin(angle_from_center) * distance_pixels_y
+
+        shorter_edge = (
+            min([center_x, center_y, image.width - center_x, image.height - center_y])
+            * 2
+        )
+
+    # zoom values (from 0 -> 1) roughly translate to (100% -> 1%) of image data
+    zoom_pixels_from_center = int((shorter_edge / np.exp(zoom * 4)) / 2)
+    center_x, center_y = int(center_x), int(center_y)
+
+    (x1, y1, x2, y2) = (
+        center_x - zoom_pixels_from_center,
+        center_y - zoom_pixels_from_center,
+        center_x + zoom_pixels_from_center,
+        center_y + zoom_pixels_from_center,
+    )
+
+    # image = image.crop((x1, y1, x2, y2))  # redundant
+    return image.resize(resize_dimensions, box=(x1, y1, x2, y2))
+
+
+def add_random_noise(image, strength=0):
+    if not strength:
+        return image
+    # do something
+    return image
+
+
+def add_random_compression(image, random_seed=None):
+    if not random_seed:
+        return image
+    # do something
+    return image
+
+==== sqs.py ====
+# apps/common/utilities/data/sqs.py
+import boto
+from settings import AWS_OPTIONS, DEFAULT_FILE_STORAGE
+from boto.sqs.message import Message
+import json
+from settings import QUEUE_NAME, AWS_OPTIONS, BETA_QUEUE_NAME, TEST_QUEUE_NAME
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def send_sqs(dictionary):
+    message = Message()
+    message.set_body(json.dumps(dictionary))
+
+    sqs_connection = boto.sqs.connect_to_region(
+        "us-east-1",
+        aws_access_key_id=AWS_OPTIONS["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=AWS_OPTIONS["AWS_SECRET_ACCESS_KEY"],
+    )
+
+    if QUEUE_NAME:
+        logging.debug("emitted to QUEUE_NAME queue :" + QUEUE_NAME)
+        production_queue = sqs_connection.get_queue(QUEUE_NAME)
+        production_queue.write(message)
+
+    if BETA_QUEUE_NAME:
+        logging.debug("emitted to BETA_QUEUE_NAME queue :" + BETA_QUEUE_NAME)
+        test_queue = sqs_connection.get_queue(BETA_QUEUE_NAME)
+        test_queue.write(message)
+
+    if TEST_QUEUE_NAME:
+        logging.debug("emitted to TEST_QUEUE_NAME queue :" + TEST_QUEUE_NAME)
+        test_queue = sqs_connection.get_queue(TEST_QUEUE_NAME)
+        test_queue.write(message)
+
+    logger.info("EMITTED SIGNAL: " + str(dictionary))
+
+==== __init__.py ====
+
+==== transloadit.py ====
+# apps/common/utilities/data/transloadit.py
+from django.utils import timezone
+import hashlib
+import hmac
+import json
+from datetime import timedelta
+
+from django.contrib import messages
+
+from settings.vendor_services_settings import TRANSLOADIT_OPTIONS
+
+# 'Constants'
+DEFAULT_SIGNATURE_EXPIRATION_MINUTES = 70
+
+
+def check_transloadit_upload_response(request):
+    if "transloadit" not in request.POST:
+        messages.warning(request, "Photo upload failed. Please try again.")
+        raise RuntimeError("Photo upload failed. Please try again.")
+
+    raw_data = request.POST["transloadit"]
+    upload_json = json.loads(raw_data)  # type: json
+
+    if upload_json["ok"] != "ASSEMBLY_COMPLETED":
+        raise RuntimeError("Photo upload failed. Error code: " + upload_json["error"])
+
+
+def prepare_upload_info(context, template_id):
+    """
+    Handles the boilerplate of preparing the payload and signature
+    :param context: For template
+    :param template_id: transloadit template id
+    :return:
+    """
+    payload = create_payload(template_id)
+    sig = create_signature(payload)
+    context = append_upload_template_info(context, payload, sig)
+    return context
+
+
+def append_upload_template_info(context, payload, signature):
+    """
+    Appends transloadit info to an existing context.
+    Allows proper use of the upload template
+    :param signature:
+    :param payload:
+    :param context: django.template.Context
+    """
+    context["signature"] = signature
+    context["params"] = json.dumps(payload, separators=(",", ":"))
+    return context
+
+
+def create_payload(template_id):
+    """
+    :return: payload value corresponding to 'params' key in transloadit js blob
+    """
+    ex_key, ex_val = create_expires_tag()
+    payload = {
+        "auth": {"key": TRANSLOADIT_OPTIONS["TRANSLOADIT_AUTH_KEY"], ex_key: ex_val},
+        "template_id": template_id,
+    }
+    return payload
+
+
+def create_signature(payload):
+    """
+    :param payload: dictionary containing "auth" and template_id params
+    :return: signature for use in transloadit form
+    """
+    assert "auth" in payload
+    json_dump = json.dumps(payload, separators=(",", ":"))
+    return hmac.new(
+        TRANSLOADIT_OPTIONS["TRANSLOADIT_SECRET_KEY"], json_dump, hashlib.sha1
+    ).hexdigest()
+
+
+def create_expires_tag():
+    """
+    Returns a 2-tuple, key value pair for expires
+    :return:
+    """
+    return "expires", create_expires_value(timezone.now())
+
+
+def create_expires_value(
+    timepoint, expiration_in_minutes=DEFAULT_SIGNATURE_EXPIRATION_MINUTES
+):
+    return (timepoint + timedelta(minutes=expiration_in_minutes)).strftime(
+        "%Y/%m/%d %H:%M:%S"
+    )
+
+==== s3.py ====
+# apps/common/utilities/data/s3.py
+import boto3
+from settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def download_s3_file_to_local(s3_filename, local_filename):
+
+    # s3 = boto3.resource('s3', aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+    # bucket = s3.Bucket(AWS_S3_BUCKET_NAME)
+    # obj = bucket.Object(s3_filename)
+    # with open(local_filename, 'wb') as data:
+    #     obj.download_fileobj(data)
+
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    )
+
+    s3_filename = s3_filename[s3_filename.find("ML_model_") :]
+    logging.debug(
+        f"downloading s3 key: {s3_filename} from bucket: {AWS_S3_BUCKET_NAME}"
+    )
+    s3_client.download_file(AWS_S3_BUCKET_NAME, s3_filename, local_filename)
+    logging.debug(f"file saved to: {local_filename}")
+    return True
+
+==== __init__.py ====
+
+==== backends.py ====
+# apps/common/utilities/django/backends.py
+from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
+
+
+class EmailAuthBackend(ModelBackend):
+    def authenticate(self, request, username=None, password=None, **kwargs):
+        UserModel = get_user_model()
+        try:
+            user = UserModel.objects.get(email=username)
+        except UserModel.DoesNotExist:
+            return None
+        else:
+            if user.check_password(password):
+                return user
+        return None
+
+==== middleware.py ====
+# apps/common/utilities/django/middleware.py
+import os
+
+
+class APIHeaderMiddleware:
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response["X-Required-Main-Build"] = os.environ.get(
+            "Required-Main-Build", "unknown"
+        )
+        return response
+
+==== timestampable.py ====
+# apps/common/behaviors/timestampable.py
+from django.db import models
+
+
+class Timestampable(models.Model):
+    """
+    created_at: datetime
+    modified_at: datetime
+
+    An abstract mixin for models that need to track the creation and modification timestamps.
+
+    This mixin automatically adds two fields to the model that keep track of when an object
+    was created and last modified. It can be used in various models that require these features.
+
+    Attributes:
+        created_at (datetime): A datetime field that stores the timestamp of when the object was created.
+            It is automatically set to the current time when the object is first created and is not
+            subsequently modified.
+
+        modified_at (datetime): A datetime field that stores the timestamp of when the object was last
+            modified. It is automatically updated to the current time whenever the object is saved.
+
+    Note:
+        This model is abstract and should be used as a mixin in other models.
+        The `auto_now_add` and `auto_now` options are used to automatically manage the timestamps.
+    """
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+==== locatable.py ====
+# apps/common/behaviors/locatable.py
+from django.db import models
+
+# from timezone_field import TimeZoneField
+
+
+class Locatable(models.Model):
+    address = models.ForeignKey(
+        "common.Address", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    # timezone = TimeZoneField(blank=True, null=True)
+
+    longitude = models.FloatField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+==== publishable.py ====
+# apps/common/behaviors/publishable.py
+from django.db import models
+from django.utils import timezone
+
+
+class Publishable(models.Model):
+    published_at = models.DateTimeField(null=True, blank=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    unpublished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_published(self):
+        now = timezone.now()
+        if (
+            self.published_at
+            and self.published_at < now
+            and not (self.unpublished_at and self.unpublished_at < now)
+        ):
+            return True
+        else:
+            return False
+
+    @is_published.setter
+    def is_published(self, value):
+        if value and not self.is_published:
+            self.unpublished_at = None
+            self.published_at = timezone.now()
+        elif not value and self.is_published:
+            self.unpublished_at = timezone.now()
+
+    def publish(self):
+        self.is_published = True
+
+    def unpublish(self):
+        self.is_published = False
+
+==== authorable.py ====
+# apps/common/behaviors/authorable.py
+from django.db import models
+from settings import AUTH_USER_MODEL
+
+
+class Authorable(models.Model):
+    """
+    author: User
+    is_author_anonymous: bool
+    authored_at: datetime
+
+    A mixin for use with models that have an associated author, represented by a user.
+
+    This mixin encapsulates common attributes related to authorship and can be used
+    in various models that require an author attribute.
+
+    Attributes:
+        author (ForeignKey): A foreign key to the user model representing the author of the content.
+            The related name is dynamically generated based on the class name.
+
+        is_author_anonymous (bool): A boolean flag indicating whether the author's identity should
+            be kept anonymous. Defaults to False.
+
+        authored_at (datetime): A timestamp representing when the content was authored.
+            Automatically set when the object is created.
+
+    Properties:
+        author_display_name (str): A property that returns the display name of the author.
+            If `is_author_anonymous` is True, it returns "Anonymous"; otherwise, it returns the string representation of the author.
+
+    Note:
+        This model is abstract and should be used as a mixin in other models.
+
+    """
+
+    author = models.ForeignKey(
+        AUTH_USER_MODEL, related_name="%(class)ss", on_delete=models.CASCADE
+    )
+    is_author_anonymous = models.BooleanField(default=False)
+    authored_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def author_display_name(self):
+        if self.is_author_anonymous:
+            return "Anonymous"
+        else:
+            return str(self.author)
+
+    class Meta:
+        abstract = True
+
+==== __init__.py ====
+from .annotatable import Annotatable
+from .authorable import Authorable
+from .expirable import Expirable
+from .locatable import Locatable
+from .permalinkable import Permalinkable
+from .timestampable import Timestampable
+from .publishable import Publishable
+
+
+__all__ = [
+    'Annotatable',
+    'Authorable',
+    'Expirable',
+    'Locatable',
+    'Permalinkable',
+    'Timestampable',
+    'Publishable'
+]
+
+==== annotatable.py ====
+# apps/common/behaviors/annotatable.py
+from django.db import models
+
+
+class Annotatable(models.Model):
+    notes = models.ManyToManyField("common.Note")
+
+    @property
+    def has_notes(self):
+        return True if self.notes.count() else False
+
+    class Meta:
+        abstract = True
+
+==== expirable.py ====
+# apps/common/behaviors/expirable.py
+from django.db import models
+
+
+class Expirable(models.Model):
+    """
+    valid_at: datetime
+    expired_at: datetime
+
+    A mixin for use with models that require expiration functionality.
+
+    This mixin provides fields and methods to handle the validity and expiration of objects.
+    It can be used in various models that require these features, such as tokens, offers, or temporary access permissions.
+
+    Attributes:
+        valid_at (DateTimeField, optional): A timestamp indicating when the object becomes valid.
+            Can be left blank if the object is valid immediately upon creation.
+
+        expired_at (DateTimeField, optional): A timestamp indicating when the object expires.
+            Can be left blank if the object does not expire.
+
+    Properties:
+        is_expired (bool): A property that returns True if the object has expired, False otherwise.
+            Can be set to True to mark the object as expired, or False to unmark it.
+
+    Note:
+        This model is abstract and should be used as a mixin in other models.
+    """
+
+    valid_at = models.DateTimeField(null=True, blank=True)
+    expired_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_expired(self) -> bool:
+        from django.utils.timezone import now
+
+        return True if self.expired_at and self.expired_at < now() else False
+
+    @is_expired.setter
+    def is_expired(self, value: bool):
+        from django.utils.timezone import now
+
+        if value is True:
+            self.expired_at = now()
+        elif value is False and self.is_expired:
+            self.expired_at = None
+
+    class Meta:
+        abstract = True
+
+==== permalinkable.py ====
+# apps/common/behaviors/permalinkable.py
+from django.core.validators import validate_slug
+from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.utils.text import slugify
+
+
+class Permalinkable(models.Model):
+    slug = models.SlugField(
+        null=True, blank=True, validators=[validate_slug], unique=True
+    )
+
+    class Meta:
+        abstract = True
+
+    def get_url_kwargs(self, **kwargs):
+        kwargs.update(getattr(self, "url_kwargs", {}))
+        return kwargs
+
+    # @models.permalink
+    # def get_absolute_url(self):
+    #     url_kwargs = self.get_url_kwargs(slug=self.slug)
+    #     return (self.url_name, (), url_kwargs)
+
+
+@receiver(pre_save, sender=Permalinkable)
+def pre_save_slug(sender, instance, *args, **kwargs):
+    if not issubclass(sender, Permalinkable):
+        return
+    if not instance.slug and hasattr(instance, "slug_source"):
+        instance.slug = slugify(instance.slug_source)
+
+==== __init__.py ====
+
+==== urls.py ====
+# apps/public/urls.py
+from django.contrib.auth import views as auth_views
+from django.urls import path
+
+from .views import account
+
+app_name = "public"
+
+urlpatterns = []
+
+# Brand, Category, and Item
+urlpatterns += [
+    path(
+        "",
+        account.HomeView.as_view(),
+        name="home",
+    ),
+]
+
+# Auth and Accounts
+urlpatterns += [
+    path(
+        "account/login",
+        account.LoginView.as_view(),
+        name="account-login",
+    ),
+    path(
+        "account/logout",
+        auth_views.LogoutView.as_view(next_page="/"),
+        name="account-logout",
+    ),
+    path(
+        "account/settings",
+        account.SettingsView.as_view(),
+        name="account-settings",
+    ),
+    # path(
+    #     "account/create",
+    #     account.AccountCreateView.as_view(),
+    #     name="account-create",
+    # ),
+]
+
+==== user_state.py ====
+# apps/public/middleware/user_state.py
+from apps.assistant.models import Assistant, Conversation
+from apps.item.models import Category
+
+
+class AttachUserStateMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        return response
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        request.state = type("State", (), {})
+        request.state.brands = []
+        request.state.categories = []
+        request.state.assistants = []
+        request.state.conversations = []
+
+        if request.user.is_authenticated:
+            request.state.brands = request.user.brands.all()
+            request.state.categories = Category.objects.filter(
+                brand__in=request.state.brands
+            )
+            request.state.assistants = Assistant.objects.all()
+            request.conversations = Conversation.objects.filter(
+                assistant__in=request.state.assistants,
+                brand__in=request.state.brands,
+            )
+
+==== footer.py ====
+# apps/public/components/footer/footer.py
+from django_components import component
+
+
+@component.register("footer")
+class Footer(component.Component):
+    template_name = "footer/footer.html"
+
+    def get_context_data(self):
+        return {}
+
+    class Media:
+        pass
+        # css = "footer/footer.css"
+        # js = "footer/footer.js"
+
+==== footer.html ====
+<!-- apps/public/components/footer/footer.py -->
+<footer class="footer is-flex-align-items-flex-end p-3 pb-auto" style="position: relative; bottom: 0; width: 100%;">
+  <div class="content has-text-right is-small">
+    <p class="">
+      served by
+      <a class="has-text-dark has-text-weight-semibold" target="_blank" href="#">Django Project Template</a>
+      ©
+      <span class="has-text-weight-semibold">{% now "Y" %}</span>
+    </p>
+  </div>
+</footer>
+
+==== messages.html ====
+<!-- apps/public/components/messages/messages.html -->
+<div id='messages' class='mx-5' style="{% if not messages|length %}display: none;{% endif %}">
+  <div class="tile is-ancestor" style="flex-direction: row-reverse;">
+    {% for message in messages %}
+      <div class="tile is-parent" style="max-width: 400px;">
+        <article class="tile is-child notification is-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">
+          <button class="delete"></button>
+          <p class="subtitle is-6">
+            {{ message|safe }}
+          </p>
+        </article>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!--Tiles are deprecated, use a Grid
+<div class="grid">
+  <div class="cell">
+    <article class="box">
+      <p class="title">Hello World</p>
+      <p class="subtitle">What is up?</p>
+    </article>
+  </div>
+  <div class="cell">
+    <article class="box">
+      <p class="title">Foo</p>
+      <p class="subtitle">Bar</p>
+    </article>
+  </div>
+</div>
+--->
+
+==== messages.py ====
+# apps/public/components/messages/messages.py
+from django_components import component
+
+
+@component.register("messages")
+class Messages(component.Component):
+    template_name = "messages/messages.html"
+
+    def get_context_data(self):
+        return {}
+
+    class Media:
+        pass
+        # css = "messages/messages.css"
+        # js = "messages/messages.js"
+
+==== navbar.html ====
+<!-- apps/public/components/nav/navbar/navbar.html -->
+{% load static %}
+
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a class="navbar-item" href="/">
+      <img src="{% static 'assets/img/logo.png' %}" width="28" height="28"  alt="Django Project Template Logo"/>
+    </a>
+
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+
+  <div
+      id="navMenu"
+      class="navbar-menu"
+  >
+    <div class="navbar-start">
+      {% if user.is_authenticated %}
+        {#      {% component "search" %}{% endcomponent %}#}
+      {% endif  %}
+    </div>
+
+    <!-- middle zone between left and right -->
+
+    <div class="navbar-end">
+      {% if user.is_authenticated %}
+        {#      {% component "search" %}{% endcomponent %}#}
+      {% endif  %}
+      {% component "account_menu" %}{% endcomponent %}
+    </div>
+
+  </div>
+</nav>
+
+<div
+    class="hidden"
+    hx-get="."
+    hx-swap="outerHTML"
+    hx-trigger="something-change from:body"
+    hx-select="#navMenu"
+    hx-target="#navMenu"
+>
+</div>
+
+==== navbar.js ====
+// apps/public/components/nav/navbar/navbar.js
+document.addEventListener('DOMContentLoaded', () => {
+  // Get all "navbar-burger" elements
+  const $navbarBurgers = Array.prototype.slice.call(
+    document.querySelectorAll('.navbar-burger'),
+    0
+  )
+
+  // Add a click event on each of them
+  $navbarBurgers.forEach((el) => {
+    el.addEventListener('click', () => {
+      // Get the target from the "data-target" attribute
+      const target = el.dataset.target
+      const $target = document.getElementById(target)
+
+      // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
+      el.classList.toggle('is-active')
+      $target.classList.toggle('is-active')
+    })
+  })
+})
+
+==== navbar.py ====
+# apps/public/components/nav/navbar/navbar.py
+from django_components import component
+
+
+@component.register("navbar")
+class Navbar(component.Component):
+    template_name = "nav/navbar/navbar.html"
+
+    def get_context_data(self, active_thing_id=None):
+        return {}
+
+    class Media:
+        # css = "nav/navbar/navbar.css"
+        js = "nav/navbar/navbar.js"
+
+==== search.html ====
+<!-- apps/public/components/nav/search/search.html -->
+  <div class="navbar-item">
+    <div class="field is-grouped">
+      <p class="control">
+        <input class="input" type="text" placeholder="Search.." />
+      </p>
+{#      <p class="control">#}
+{#        <a class="button is-primary">#}
+{#          <span>Submit</span>#}
+{#        </a>#}
+{#      </p>#}
+    </div>
+  </div>
+
+==== account_menu.py ====
+# apps/public/components/nav/account_menu/account_menu.py
+from django_components import component
+
+
+@component.register("account_menu")
+class AccountMenu(component.Component):
+    template_name = "nav/account_menu/account_menu.html"
+
+    def get_context_data(self):
+        return {}
+
+==== account_menu.html ====
+<!-- apps/public/components/nav/account_menu/account_menu.html -->
+{% if user.is_authenticated %}
+  <div class="navbar-item has-dropdown is-hoverable">
+    <a class="navbar-link is-arrowless mx-3">
+      <i class="fas fa-ellipsis-h" style="font-size: x-large"></i>
+    </a>
+    <div class="navbar-dropdown is-right" style="width: 12em">
+      <a class="navbar-item"
+         href="{% url 'public:account-settings' %}"
+      >
+        <span class="icon-text">
+          <span class="icon">
+            <i class="fas fa-user-ninja"></i>
+          </span>
+          <span>Settings</span>
+        </span>
+      </a>
+      {% if user.is_staff %}
+        <hr class="navbar-divider" />
+        <a href="/admin/" class="navbar-item">
+          <span class="icon-text">
+            <span class="icon">
+              <i class="fas fa-database"></i>
+            </span>
+            <span>Admin DB</span>
+          </span>
+        </a>
+      {% endif %}
+{#      <hr class="navbar-divider" />#}
+{#      <a href="/api/" class="navbar-item">#}
+{#        <span class="icon-text">#}
+{#          <span class="icon">#}
+{#            <i class="fas fa-book"></i>#}
+{#          </span>#}
+{#          <span>API Docs</span>#}
+{#        </span>#}
+{#      </a>#}
+      <hr class="navbar-divider" />
+      <a class="navbar-item" href="{% url 'public:account-logout' %}">
+        <span class="icon-text">
+          <span class="icon">
+            <i class="fas fa-sign-out-alt"></i>
+          </span>
+          <span>Logout</span>
+        </span>
+      </a>
+    </div>
+  </div>
+{% else %}
+  <a class="navbar-item" href="{% url 'public:account-login' %}">
+    <i class="fas fa-user-ninja pr-2"></i>
+    Login
+  </a>
+{% endif %}
+
+==== ds-button.js ====
+// apps/public/static/webcomponents/ds-button.js
+class DsButton extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
+
+  static get observedAttributes() {
+    return ['size', 'color', 'active', 'disabled', 'icon-left', 'icon-right'];
+  }
+
+  connectedCallback() {
+    this.render();
+    this.setupEventListeners();
+  }
+
+  disconnectedCallback() {
+    this.removeEventListeners();
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue !== newValue) {
+      this.render();
+    }
+  }
+
+  render() {
+    const size = this.getAttribute('size') || 'md';
+    const color = this.getAttribute('color') || 'primary';
+    const isActive = this.hasAttribute('active');
+    const isDisabled = this.hasAttribute('disabled');
+
+    const hasIconLeft = this.hasAttribute('icon-left');
+    const hasIconRight = this.hasAttribute('icon-right');
+    const iconLeft = this.getAttribute('icon-left');
+    const iconRight = this.getAttribute('icon-right');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        @import url('/path/to/tailwind.css');
+        
+        :host {
+          display: inline-block;
+        }
+        
+        .ds-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          border-radius: 0.375rem;
+          transition: all 0.2s;
+        }
+        
+        .ds-button:hover:not(:disabled) {
+          opacity: 0.8;
+        }
+        
+        .ds-button:active:not(:disabled) {
+          transform: scale(0.98);
+        }
+        
+        .ds-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .ds-button--sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+        .ds-button--md { padding: 0.75rem 1.5rem; font-size: 1rem; }
+        .ds-button--lg { padding: 1rem 2rem; font-size: 1.125rem; }
+        
+        .ds-button--primary { background-color: #3b82f6; color: white; }
+        .ds-button--secondary { background-color: #6b7280; color: white; }
+        .ds-button--muted { background-color: #e5e7eb; color: #374151; }
+        
+        .ds-button--active { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+        
+        .icon { margin: 0 0.5em; }
+        .icon-left { margin-left: 0; }
+        .icon-right { margin-right: 0; }
+      </style>
+      
+      <button id="${this.generateId()}"
+              class="ds-button ds-button--${size} ds-button--${color} ${isActive ? 'ds-button--active' : ''}"
+              ?disabled="${isDisabled}"
+              ${this.getAttributesToForward()}>
+        ${hasIconLeft ? `<i class="icon icon-left ${iconLeft}"></i>` : ''}
+        <slot></slot>
+        ${hasIconRight ? `<i class="icon icon-right ${iconRight}"></i>` : ''}
+      </button>
+    `;
+  }
+
+  setupEventListeners() {
+    this.shadowRoot.querySelector('button').addEventListener('click', this.handleClick.bind(this));
+  }
+
+  removeEventListeners() {
+    this.shadowRoot.querySelector('button').removeEventListener('click', this.handleClick.bind(this));
+  }
+
+  handleClick(event) {
+    if (this.hasAttribute('disabled')) {
+      event.preventDefault();
+      return;
+    }
+    this.dispatchEvent(new CustomEvent('ds-click', {
+      bubbles: true,
+      composed: true,
+      detail: { sourceEvent: event }
+    }));
+  }
+
+  generateId() {
+    return `ds_button_${Math.random().toString(16).slice(2, 8)}`;
+  }
+
+  getAttributesToForward() {
+    return Array.from(this.attributes)
+      .filter(attr => !['size', 'color', 'active', 'disabled', 'icon-left', 'icon-right'].includes(attr.name))
+      .map(attr => `${attr.name}="${attr.value}"`)
+      .join(' ');
+  }
+}
+
+customElements.define('ds-button', DsButton);
+
+==== _webcomponents.js ====
+// apps/public/static/webcomponents/_webcomponents.js
+import "./ds-button.js";
+// more components here
+
+// You can also add any shared logic or initialization here if needed
+
+console.log("All components loaded");
+
+==== base.css ====
+/* apps/public/static/css/base.css */
+.icon-text .icon:not(:last-child) {
+    margin-right: 0.25em;
+}
+
+.asset-parent-height-fix {
+    position: relative;
+    top: -1rem;
+}
+
+.asset-keyname {
+    margin-left: -0.5rem;
+    font-size: 0.8rem;
+    position: relative;
+    top: 0.5rem;
+    color: #777;
+}
+
+.asset-value {
+    border: 1px dashed #ccc;
+    padding: 1rem 0.8rem 0.4rem 0.8rem;
+    border-radius: 0.6rem;
+    color: rgb(10, 10, 10)
+}
+
+.asset-form, .category-form {
+    position: relative;
+}
+
+.asset-form .asset-submit {
+    position: absolute;
+    top: 1rem;
+    right: -0.4rem;
+}
+
+.category-form .category-submit {
+    position: absolute;
+    top: 0.4rem;
+    right: -2rem;
+}
+
+button.conversation-chat-option {
+    height: max-content;
+    white-space: inherit;
+    text-align: left;
+    justify-content: flex-start;
+}
+
+.no-uppercase {
+    text-transform: none;
+    font-size: 0.9em;
+}
+
+==== base.js ====
+// apps/public/static/js/base.js
+// HTMX HELPERS
+
+// add CSRF token to every request
+document.body.addEventListener("htmx:configRequest", function(configEvent){
+    configEvent.detail.headers['X-CSRFToken'] = document.querySelector('html').getAttribute('data-csrf_token');
+})
+
+==== bulma.js ====
+// apps/public/static/js/bulma.js
+document.addEventListener('DOMContentLoaded', () => {
+  ;(document.querySelectorAll('.notification .delete') || []).forEach(
+    ($delete) => {
+      const $notification = $delete.parentNode
+
+      $delete.addEventListener('click', () => {
+        $notification.parentNode.removeChild($notification)
+      })
+    }
+  )
+})
+
+// modal handlers
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Functions to open and close a modal
+  function openModal($el) {
+    $el.classList.add('is-active')
+  }
+
+  function closeModal($el) {
+    $el.classList.remove('is-active')
+  }
+
+  function closeAllModals() {
+    ;(document.querySelectorAll('.modal') || []).forEach(($modal) => {
+      closeModal($modal)
+    })
+  }
+
+  // Add a click event on buttons to open a specific modal
+  ;(document.querySelectorAll('.modal-trigger') || []).forEach(($trigger) => {
+    const modal = $trigger.dataset.target
+    const $target = document.getElementById(modal)
+
+    $trigger.addEventListener('click', () => {
+      openModal($target)
+    })
+  })
+})
+
+==== __init__.py ====
+
+==== _partial.html ====
+<!-- apps/public/templates/_partial.html -->
+{% block center_content %}
+{% endblock center_content %}
+
+==== _base.html ====
+<!-- apps/public/templates/_base.html -->
+{% load django_htmx %} {% load static %}
+
+<!DOCTYPE html>
+<html lang="en" data-csrf_token="{{ csrf_token }}">
+  <head>
+    <meta charset="utf-8" />
+    {% block viewport %}
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {% endblock viewport %}
+    <base href="/" />
+
+    <!--FAVICON-->
+    <!--iOS and Android icons-->
+    <link rel="icon" href="{{ STATIC_URL }}assets/favicon.png" />
+
+    <title id="tab_title">Django Project Template {% if debug %}DEBUG{% endif %}</title>
+
+    <!---META TAGS--->
+    {% block additional_meta_tags %} {% endblock additional_meta_tags %}
+
+    <!--Raleway Font-->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Raleway:wght@500;600&display=swap"
+    />
+
+    <!---Bulma CSS--->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.4/css/bulma.min.css"
+      integrity="sha512-HqxHUkJM0SYcbvxUw5P60SzdOTy/QVwA1JJrvaXJv4q7lmbDZCmZaqz01UPOaQveoxfYRv1tHozWGPMcuTBuvQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script
+      src="https://kit.fontawesome.com/c83e8fd695.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <!--BASE CSS-->
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/base.css?v=2" />
+
+    <!-- COMPONENT'S CSS -->
+    {% component_css_dependencies %}
+    <!--FOR TEMPLATES TO LOAD MORE CSS-->
+    {% block css %} {% endblock css %}
+  </head>
+
+  <body {% if debug %} hx-ext="debug" {% endif %}>
+  {% block body_inner_html %}
+    <div style="height: 100vh">
+      <div class="wrapper background-style">
+        {% block navbar %}
+          {% component "navbar"%}{% endcomponent %}
+        {% endblock navbar %}
+
+        {% block messages %}
+          {% component "messages" %}{% endcomponent %}
+        {% endblock messages %}
+
+        <main id="main" class="container-fluid" hx-history-elt>
+          <div class="columns is-mobile m-3">
+            <section id="left_column" class="column is-2-tablet is-4-mobile">
+              {% block left_content %}
+                <!-- left column -->
+              {% endblock left_content %}
+            </section>
+
+            <section id="center_column" class="column is-8">
+              {% block center_content %} {% endblock center_content %}
+            </section>
+
+            <section id="right_column" class="column is-2-tablet is-0-mobile">
+              {% block right_content %}
+                <!-- right column -->
+              {% endblock right_content %}
+            </section>
+          </div>
+        </main>
+
+        {% block footer %}
+          {% component "footer" %}{% endcomponent %}
+        {% endblock footer %}
+      </div>
+    </div>
+    {% endblock body_inner_html %}
+
+    <!--Javascript Placed at the end of the document. Pages load faster. -->
+    <!--BASE JS-->
+    <script src="{{ STATIC_URL }}js/base.js?v=1"></script>
+    <script src="{{ STATIC_URL }}js/bulma.js?v=1"></script>
+
+    <!-- COMPONENT'S JS -->
+    {% component_js_dependencies %}
+    <!--FOR TEMPLATES TO LOAD MORE JS-->
+    {% block javascript %} {% endblock javascript %}
+    <!--HTMX-->
+    <script src="https://unpkg.com/htmx.org@1.1.0"></script>
+    {% if debug %}<script src="https://unpkg.com/htmx.org/dist/ext/debug.js"></script>{% endif %}
+    {% django_htmx_script %}
+    <!-- HYPERSCRIPT -->
+    <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+  </body>
+
+</html>
+
+==== login.html ====
+<!-- apps/public/templates/account/login.html -->
+{% extends "pages/onboarding.html" %}
+
+{% block center_content %}
+  <section class="section">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column is-half">
+          <div class="card has-background-danger p-6">
+            <form action="{% url 'public:account-login' %}" method="post">
+              {% load widget_tweaks %}{% csrf_token %}
+
+              <!-- Username Field -->
+              <div class="field">
+                <label class="label">Email</label>
+                <div class="control has-icons-left has-icons-right">
+                  {{ form.username|add_class:'input is-primary-dark' }}
+                  <span class="icon is-small is-left has-text-primary-dark">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <span class="icon is-small is-right">
+                    <!-- Conditional class for invalid email -->
+                    <i class="fas fa-check"></i>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Password Field -->
+              <div class="field">
+                <label class="label">Password</label>
+                <div class="control has-icons-left">
+                  {{ form.password|add_class:'input is-primary-dark' }}
+                  <span class="icon is-small is-left has-text-primary-dark">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Login Button -->
+              <div class="field">
+                <div class="control">
+                  <button class="button is-warning" type="submit">Login</button>
+                </div>
+              </div>
+
+              <!-- Error Messages -->
+              {% if form.errors %}
+              <p class="help is-danger has-text-centered">
+                {{ form.non_field_errors }}
+              </p>
+              {% endif %}
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock center_content %}
+
+==== settings.html ====
+<!-- apps/public/templates/account/settings.html -->
+{% extends base_template %}
+{% load static %}
+
+{% block center_content %}
+
+<div class="card m-3">
+  <header class="card-header">
+    <p class="card-header-title">Basic Info</p>
+  </header>
+  <div class="card-content">
+    <form method="post">
+      {% csrf_token %}
+      <div class="columns is-multiline">
+        <div class="column is-one-third">
+          <div class="field">
+            <label class="label">First Name</label>
+            <div class="control">
+              {{ user_form.first_name }}
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-third">
+          <div class="field">
+            <label class="label">Last Name</label>
+            <div class="control">
+              {{ user_form.last_name }}
+            </div>
+          </div>
+        </div>
+        <div class="column is-one-third">
+          <div class="field">
+            <label class="label">Email</label>
+            <div class="control has-icons-left has-icons-right">
+              {{ user_form.email }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="control">
+          <button type="submit" class="button is-success-dark">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card m-3">
+  <header class="card-header">
+    <p class="card-header-title">Change Password</p>
+  </header>
+
+  <div class="card-content">
+    <form method="post">
+      {% load widget_tweaks %}{% csrf_token %}
+      <div class="field">
+        <label class="label">Current password</label>
+        <div class="control">
+          {{ password_form.old_password|add_class:"input" }}
+        </div>
+        {% if password_form.old_password.errors %}
+          <p class="help is-danger">{{ password_form.old_password.errors.0 }}</p>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label class="label">New password</label>
+        <div class="control">
+          {{ password_form.new_password1|add_class:"input" }}
+        </div>
+        {% if password_form.new_password1.errors %}
+          <p class="help is-danger">{{ password_form.new_password1.errors.0 }}</p>
+        {% endif %}
+      </div>
+      <div class="field">
+        <label class="label">Confirm new password</label>
+        <div class="control">
+          {{ password_form.new_password2|add_class:"input" }}
+        </div>
+        {% if password_form.new_password2.errors %}
+          <p class="help is-danger">{{ password_form.new_password2.errors.0 }}</p>
+        {% endif %}
+      </div>
+      <div class="field is-grouped">
+        <div class="control">
+          <button type="submit" class="button is-danger">Update password</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <footer class="card-footer">
+
+    {% if password_form.errors %}
+      {% for error in password_form.non_field_errors %}
+        <p class="card-footer-item text-warning">{{ error|escape }}</p>
+      {% endfor %}
+    {% endif %}
+
+  </footer>
+
+</div>
+
+{% endblock %}
+
+==== home.html ====
+<!-- apps/public/templates/pages/home.html -->
+{% extends "_base.html" %}
+
+{% block center_content %}
+
+  {% if component_name %}
+    {% component component_name %}{% endcomponent %}
+  {% endif %}
+
+{% endblock %}
+
+{#{% block footer %}#}
+{#{% endblock %}#}
+==== main_content_view.py ====
+# apps/public/views/main_content_view.py
+import logging
+from typing import Any, Dict
+
+from django.shortcuts import render as django_render
+from django.views import View
+from django_htmx import http as htmx
+
+
+class MainContentView(View):
+    url: str = ""
+    context: Dict = {}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        if not hasattr(self, "template_name"):
+            cls_name_str = self.__class__.__name__.lower()
+            self.template_name = f"{cls_name_str}/{cls_name_str}.html"
+
+    def get(self, request, *args, **kwargs):
+        logging.warning("GET method not implemented.")
+        if self.template_name:
+            logging.warning("Will attempt to render template as-is.")
+            return self.render()
+        raise NotImplementedError
+
+    def post(self, request, *args, **kwargs):
+        raise NotImplementedError
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.htmx:
+            if request.GET.get("hx-get", "") == "page":
+                self.context["base_template"] = "_base.html"
+            else:
+                self.context["base_template"] = "_partial.html"
+        else:
+            self.context["base_template"] = "_base.html"
+        return super().dispatch(request, *args, **kwargs)
+
+    def render(
+        self,
+        request: Any = None,
+        template_name: str = None,
+        context: Dict = None,
+        push_url=None,
+    ):
+        request = request or self.request
+        template_name = template_name or self.template_name
+        context = context or self.context
+
+        response = django_render(request, template_name, context)
+
+        if push_url:
+            response = htmx.push_url(response, url=push_url)
+
+        # if request.htmx and self.url:
+        #     ic("using push_url with", self.url)
+        #     return push_url(response, self.url)
+
+        return response
+
+==== __init__.py ====
+
+==== account.py ====
+# apps/public/views/account.py
+from django import forms
+from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash, views as auth_views
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import AbstractUser
+
+from apps.public.views.main_content_view import MainContentView
+
+
+class LoginView(auth_views.LoginView):
+    template_name = "account/login.html"
+    redirect_authenticated_user = True
+
+
+# Assuming AbstractUser is being used directly
+class UserSettingsForm(forms.ModelForm):
+    class Meta:
+        model = AbstractUser
+        fields = ["first_name", "last_name", "email"]
+        widgets = {
+            "first_name": forms.TextInput(
+                attrs={"placeholder": "John", "class": "input"}
+            ),
+            "last_name": forms.TextInput(
+                attrs={"placeholder": "Smith", "class": "input"}
+            ),
+            "email": forms.EmailInput(attrs={"disabled": True, "class": "input"}),
+        }
+
+
+class SettingsView(LoginRequiredMixin, MainContentView):
+    template_name = "account/settings.html"
+    # url = "/account/settings/"
+
+    def get(self, request, *args, **kwargs):
+        if "user_form" not in self.context:
+            self.context["user_form"] = UserSettingsForm(instance=request.user)
+        if "password_form" not in self.context:
+            self.context["password_form"] = auth_views.PasswordChangeForm(
+                user=request.user
+            )
+        return self.render()
+
+    def post(self, request, *args, **kwargs):
+        if "first_name" in request.POST:
+            self.context["user_form"] = UserSettingsForm(
+                request.POST, instance=request.user
+            )
+            if self.context["user_form"].is_valid():
+                self.context["user_form"].save()
+                messages.success(request, "User settings updated.")
+        else:
+            self.context["password_form"] = auth_views.PasswordChangeForm(
+                request.user, request.POST
+            )
+            if self.context["password_form"].is_valid():
+                self.context["password_form"].save()
+                update_session_auth_hash(request, self.context["password_form"].user)
+                messages.success(request, "Password updated.")
+            else:
+                messages.error(
+                    request,
+                    f"Password not updated.",
+                )
+
+        return self.get(request, *args, **kwargs)
+
+
+class HomeView(LoginRequiredMixin, MainContentView):
+    template_name = "pages/home.html"
+    # url = "/"  #  root of host
+
+==== __init__.py ====
+
+==== urls.py ====
+# apps/api/urls.py
+from django.urls import path
+from rest_framework import routers
+
+from apps.common.views.auth import (
+    # obtain_auth_token,
+    csrf_view,
+    login_view,
+    logout_view,
+    me_view,
+    password_change_view,
+)
+
+# API V1
+
+app_name = "api"
+api_router = routers.DefaultRouter()
+
+api_router.register(
+    r"users",
+    user.UserViewSet,
+)
+
+urlpatterns = [
+    # path(
+    #     "conversations/<int:conversation_id>/add_block/",
+    #     conversation_block.AddConversationBlockView.as_view(),
+    #     name="add-conversation-block",
+    # ),
+    path("auth/csrf/", csrf_view, name="csrf"),
+    path("auth/login/", login_view, name="login"),
+    path("auth/logout/", logout_view, name="logout"),
+    # path("auth/token/", obtain_auth_token, name="token"),
+    path("auth/password/change/", password_change_view, name="password_change"),
+    path("auth/me/", me_view, name="me"),
+]
+
+# # JWT AUTH
+# from rest_framework_simplejwt import views as jwt_views
+# urlpatterns += [
+#     path('auth/token/', jwt_views.TokenObtainPairView.as_view(), name='token_obtain_pair'),
+#     path('auth/token/refresh/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
+#     path('auth/token/verify/', jwt_views.TokenVerifyView.as_view(), name='token_verify'),
+# ]
+
+==== __init__.py ====
+
+==== api_test_case.py ====
+# api/tests/api_test_case.py
+from django.test import TestCase
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from apps.common.models import User
+
+
+class APITestCase(TestCase):
+    def setUp(self, create_app_user=False, create_artist=False, create_videos=False):
+        self.client = APIClient()
+        if create_app_user:
+            self.app_user = User.objects.create(username="random", is_active=True)
+
+    # def auth_with_app_user(self):
+    #     assert self.app_user
+    #     self.client.credentials(HTTP_AUTHORIZATION="Bearer " + self.app_user.jwt_token)
+
+    def assert_equal(self, a, b):
+        assert a == b, f"assertion error on {a} == {b}"
+
+    def assert_not_equal(self, a, b):
+        assert a != b, f"assertion error on {a} != {b}"
+
+    def assert_endswith(self, a, b):
+        assert a.endswith(b), f"assertion error on {a}.endswith({b})"
+
+    def assert_fields_exist(self, data={}, fields_list=[]):
+        for field in fields_list:
+            assert (
+                field in data
+            ), f"Expected field `{field}` in user response data, but not found."
+        assert "password" not in data
+
+    def assert_staus_200_OK(self, response):
+        assert response.status_code == status.HTTP_200_OK, (
+            f"Expected status 200 OK, but received {response.status_code}"
+            f" on route {response.request['PATH_INFO']}"
+            f" in {self.__class__.__name__}"
+        )
+
+    def assert_staus_201_CREATED(self, response):
+        assert response.status_code == status.HTTP_201_CREATED, (
+            f"Expected status 201 CREATED, but received {response.status_code}"
+            f" on route {response.request['PATH_INFO']}"
+            f" in {self.__class__.__name__}"
+        )
+
+    def assert_staus_204_DELETED(self, response):
+        assert response.status_code == status.HTTP_204_NO_CONTENT, (
+            f"Expected status 204 NO CONTENT, but received {response.status_code}"
+            f" on route {response.request['PATH_INFO']}"
+            f" in {self.__class__.__name__}"
+        )
+
+==== user.py ====
+# apps/server/api/serializers/user.py
+from rest_framework import serializers
+from apps.common.utilities.serializers import WritableSerializerMethodField
+from apps.common.models import User
+from typing import Optional
+
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    username = serializers.CharField(
+        required=False,
+        allow_null=False,
+        allow_blank=False,
+        min_length=3,
+        max_length=150,
+    )
+    is_agreed_to_terms = WritableSerializerMethodField(
+        deserializer_field=serializers.BooleanField(), required=False
+    )
+    leap_api_key = WritableSerializerMethodField(
+        deserializer_field=serializers.CharField(), required=False
+    )
+    openai_api_key = WritableSerializerMethodField(
+        deserializer_field=serializers.CharField(), required=False
+    )
+    openai_api_org = WritableSerializerMethodField(
+        deserializer_field=serializers.CharField(), required=False
+    )
+    tnl_auth_token = WritableSerializerMethodField(
+        deserializer_field=serializers.CharField(), required=False
+    )
+
+    class Meta:
+        model = User
+
+        fields = (
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "organization_name",
+            "is_staff",
+            "is_premium_member",
+            "is_beta_tester",
+            "is_agreed_to_terms",
+            "created_at",
+            "modified_at",
+            "leap_api_key",
+            "openai_api_key",
+            "openai_api_org",
+            "tnl_auth_token",
+        )
+
+        read_only_fields = ("id", "token", "created_at", "modified_at")
+
+    def get_api_key(
+        self, obj, key, masking_start_stop: Optional[tuple[int, int]] = (3, -3)
+    ):
+        value = obj.api_keys.get(key, "")
+        if (
+            value
+            and masking_start_stop
+            and len(value) > max(abs(masking_start_stop[0]), abs(masking_start_stop[1]))
+        ):
+            return f"{value[:masking_start_stop[0]]}***{value[masking_start_stop[1]:]}"
+        elif value:
+            return value
+        return ""
+
+    def set_api_key(self, key, value):
+        self.instance.api_keys[key] = value
+
+    def get_is_agreed_to_terms(self, obj):
+        return obj.is_agreed_to_terms
+
+    def set_is_agreed_to_terms(self, value):
+        if self.instance:
+            self.instance.is_agreed_to_terms = value
+
+    def get_leap_api_key(self, obj):
+        return self.get_api_key(obj, "leap_api_key") or obj.api_keys.get(
+            "leap", {}
+        ).get("api_key", "")
+
+    def set_leap_api_key(self, value):
+        self.set_api_key("leap_api_key", value)
+
+    def get_openai_api_key(self, obj):
+        return self.get_api_key(obj, "openai_api_key") or obj.api_keys.get(
+            "openai", {}
+        ).get("api_key", "")
+
+    def set_openai_api_key(self, value):
+        self.set_api_key("openai_api_key", value)
+
+    def get_openai_api_org(self, obj):
+        return self.get_api_key(obj, "openai_api_org", masking_start_stop=(6, -3))
+
+    def set_openai_api_org(self, value):
+        self.set_api_key("openai_api_org", value)
+
+    def get_tnl_auth_token(self, obj):
+        return self.get_api_key(obj, "thenextleg_auth_token")
+
+    def set_tnl_auth_token(self, value):
+        self.set_api_key("thenextleg_auth_token", value)
+
+==== __init__.py ====
+
+==== user.py ====
+# apps/api/views/user.py
+from django.contrib.auth import authenticate
+from django.utils import timezone
+from django_filters import DateTimeFilter
+from django_filters.rest_framework import FilterSet
+from rest_framework import mixins, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
+
+from apps.api.serializers.user import UserSerializer
+from apps.common.models import User
+from apps.common.utilities.drf_permissions import IsCreateAction
+
+
+class UserFilter(FilterSet):
+    last_login = DateTimeFilter(field_name="last_login", lookup_expr="gte")
+
+    class Meta:
+        model = User
+        fields = (
+            "is_active",
+            "is_staff",
+            "is_beta_tester",
+            "is_premium_member",
+            "last_login",
+            # "api_calls_count",
+        )
+
+
+class UserViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    # mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
+    """
+    LIST endpoints:
+
+    - `/users/` ONLY superusers accounts can GET list of all users
+
+    GET endpoint:
+
+    - `/users/123/` returns user object where user_id=123
+
+    POST endpoint:
+
+    - `/users/` with JSON `{"username": char_string}`
+
+        - limit 150 characters or fewer. Letters, digits and @.+-_ only.
+        - can use email address as username
+        - if username already exists, API returns `400` error with JSON `{"username": ["A user with that username already exists."]}`
+
+    """
+
+    permission_classes = [IsAuthenticated | IsAdminUser]  # IsCreateAction
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filterset_class = UserFilter
+
+    def partial_update(self, request, pk=None, *args, **kwargs):
+        user = self.get_object()  # Get the user instance
+
+        # Check if email is already in use by another user
+        user_account_with_same_email = (
+            User.objects.filter(email=request.data.get("email"), is_email_verified=True)
+            .exclude(id=user.id)
+            .first()
+        )
+        if user_account_with_same_email:
+            return Response(
+                status=status.HTTP_401_UNAUTHORIZED,
+                data={"status": "user already registered, please login"},
+            )
+
+        # Update API keys in user_api_keys JSONField
+        api_keys = request.data.get("user_api_keys", {})
+        user.user_api_keys.update(api_keys)
+
+        # If user agreed to terms, update agreed_to_terms_at datetime
+        if request.data.get("is_agreed_to_terms"):
+            user.agreed_to_terms_at = timezone.now()
+
+        # Update other fields
+        for attr, value in request.data.items():
+            if hasattr(user, attr):
+                setattr(user, attr, value)
+
+        user.save()
+        return Response(self.get_serializer(user).data)
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            # if self.lookup_url_kwarg or self.lookup_field:
+            #     user = self.get_object()  # Get the user instance
+            return User.objects.all()
+        else:
+            return User.objects.filter(id=self.request.user.id)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def authenticate_with_password_or_code(self, request, pk=None, *args, **kwargs):
+        """
+        expecting 'four_digit_code' as a string and optionally username, email, or id in endpoint
+        use this endpoint to login with a password or a code that was emailed to the user
+        correct code passes and validates email, incorrect code fails
+        correct password passes, unless email is not verified
+        will also fail if not user.is_active (eg. blocked or banned)
+        """
+
+        user_accounts = [
+            User.objects.filter(id=pk).first(),
+            User.objects.filter(
+                email=request.data.get("email", "not@email"), is_email_verified=True
+            ).first(),
+            User.objects.filter(
+                email=request.data.get("email", "not@email"), is_email_verified=False
+            ).first(),
+            User.objects.filter(
+                username=request.data.get("username", ""),
+                email__isnull=False,
+                is_email_verified=True,
+            ).first(),
+        ]
+        success, auth_user = False, None
+
+        if not any([user.is_active for user in user_accounts if user]):
+            return Response(
+                status=status.HTTP_401_UNAUTHORIZED,
+                data={"status": "active account not found"},
+            )
+
+        for user in user_accounts:
+            if user and user.is_active:
+                # validate four_digit_code and mark email address as verified
+                if str(request.data.get("four_digit_code", "VOID")).strip() == str(
+                    user.four_digit_login_code
+                ):
+                    success = True
+                    auth_user = user
+
+                elif request.data.get("password") and user.is_email_verified:
+                    auth_user = authenticate(
+                        request,
+                        username=user.username,
+                        password=request.data.get("password"),
+                    )
+                    if auth_user:
+                        success = True
+
+                if success:
+                    auth_user.is_email_verified = True
+                    auth_user.last_login = (
+                        timezone.now()
+                    )  # note this will cause the four_digit_code to change 👍
+                    auth_user.save()
+                    serializer = self.get_serializer(auth_user, many=False)
+                    return Response(serializer.data)
+
+        if (
+            not success
+            and not request.data.get("four_digit_code", None)
+            and not user.is_email_verified
+        ):
+            return Response(
+                status=status.HTTP_401_UNAUTHORIZED,
+                data={"status": "email not verified, verify email and try again"},
+            )
+
+        elif not success:
+            return Response(
+                status=status.HTTP_401_UNAUTHORIZED,
+                data={"status": "password or code incorrect"},
+            )
+
+        return Response(
+            status=status.HTTP_401_UNAUTHORIZED,
+            data={"status": "unknown authentication error"},
+        )
+
+==== __init__.py ====
+
+==== image.py ====
+# apps/api/views/image.py
+from apps.common.models import Image
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import authentication, filters, permissions, serializers, viewsets
+
+
+class ImageSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    modified_at = serializers.DateTimeField(read_only=True)
+    url = serializers.URLField(read_only=True)
+    thumbnail_url = serializers.URLField(read_only=True)
+    meta_data = serializers.DictField(read_only=True)
+
+    class Meta:
+        model = Rendering
+        fields = [
+            "id",
+            "created_at",
+            "modified_at",
+            "url",
+            "thumbnail_url",
+            "meta_data",
+        ]
+
+    def get_variations(self, obj: Rendering):
+        return obj.variations
+
+
+class ImageViewSet(viewsets.ModelViewSet):
+    queryset = Image.objects.all()
+    serializer_class = RenderingSerializer
+    # Set authentication to session based
+    authentication_classes = [authentication.SessionAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filterset_fields = ("modified_at",)
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+==== __init__.py ====
+
+==== apps.py ====
+# apps/communication/apps.py
+from django.apps import AppConfig
+
+
+class CommonConfig(AppConfig):
+    name = "apps.communication"
+    label = "communication"
+    default_auto_field = "django.db.models.BigAutoField"
+
+==== admin.py ====
+# apps/communication/admin.py
+from django.contrib import admin
+
+
+class BaseAdmin(admin.ModelAdmin):
+    exclude = (
+        "created_at",
+        "modified_at",
+    )
+
+==== urls.py ====
+# apps/communication/urls.py
+from django.conf.urls import url
+
+
+urlpatterns = []
+
+==== __init__.py ====
+from apps.communication.models.email import Email
+from apps.communication.models.sms import SMS
+
+==== email.py ====
+# apps/communication/models/email.py
+from datetime import datetime
+import urllib.request
+from django.core.mail import EmailMessage
+from django.db import models
+
+from apps.common.models import Upload
+from apps.common.behaviors import Timestampable
+
+
+class Email(Timestampable, models.Model):
+    to_address = models.CharField(max_length=140)
+    from_address = models.CharField(
+        max_length=140, default="NSP <bookings@naturalselectionpromotions.com>"
+    )
+    subject = models.TextField(max_length=140)
+    body = models.TextField(default="")
+    attachments = models.ManyToManyField(Upload)
+
+    (
+        NOTIFICATION,
+        CONFIRMATION,
+        PASSWORD,
+    ) = range(3)
+    # text values here are used as subject line in email notifications, duplicate values allowed
+    TYPE_CHOICES = (
+        (NOTIFICATION, "notification"),
+        (CONFIRMATION, "confirmation"),
+        (PASSWORD, "password"),
+    )
+    type = models.SmallIntegerField(
+        choices=TYPE_CHOICES, null=True, blank=True, default=NOTIFICATION
+    )
+
+    # UPDATE HISTORY
+    sent_at = models.DateTimeField(null=True)
+    read_at = models.DateTimeField(null=True)
+
+    # MODEL PROPERTIES
+
+    # MODEL FUNCTIONS
+    def createMessageObject(self, manager=None):
+        self.email = EmailMessage()
+        return self.email
+
+    def createSubject(self):
+        self.subject = self.get_type_display().title()
+        self.subject = self.subject or ""
+        return self.subject
+
+    def createBody(self):
+        # needs logic
+        return self.body
+
+    def sendToUser(self, user_object):
+        self.to_address = user_object.email
+        self.send()
+
+    def send(self, require_confirmation=False):
+        if not (self.from_address and self.to_address and self.type > -1):
+            return False
+
+        # createSubject and createBody require self.url_base
+        self.subject = self.subject or self.createSubject()
+        self.body = self.body or self.createBody()
+
+        # these actions requires the body to already be constructed
+        # if STAGE or DEBUG: #non-production emails
+        #   self.body = ("""*on %s server*
+        #                   From: %s
+        #                   To: %s
+        #                   %s
+        #               """ % (server_name, self.from_address, self.to_address, self.body))
+
+        self.save()  # in case it hasn't been saved yet and doesn't have an id
+        if not hasattr(self, "email"):
+            self.email = self.createMessageObject()
+        self.email.subject = self.subject
+        self.email.body = self.body
+        self.email.from_email = self.from_address
+        self.email.to = [
+            self.to_address,
+        ]
+
+        for attachment in self.attachments.all():
+            file_name = (attachment.name | "file_upload") + attachment.file_extension
+            file_via_url = urllib.request.urlopen(attachment.original)
+            self.email.attach(file_name, file_via_url.read())
+
+        if require_confirmation:
+            return self.send_now()
+        else:
+            self.send_later()
+            return None
+
+    def send_now(self):
+        try:
+            self.email.send(fail_silently=False)
+            self.sent_at = datetime.now()
+            self.save()
+            return True
+        except Exception as e:
+            # print str(e)
+            return False
+
+==== sms.py ====
+# apps/communication/models/sms.py
+from django.db import models
+from apps.common.models import Upload
+from apps.common.behaviors import Timestampable
+
+
+class SMS(Timestampable, models.Model):
+    to_number = models.CharField(max_length=15)
+    from_number = models.CharField(max_length=15, null=True, blank=True)
+    body = models.TextField(default="")
+
+    # UPDATE HISTORY
+    sent_at = models.DateTimeField(null=True)
+    read_at = models.DateTimeField(null=True)
